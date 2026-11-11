@@ -27,3 +27,4 @@ reg add "HKCU\Software\Microsoft\Edge\NativeMessagingHosts\com.veloce.native_hos
 
 echo [OK] Veloce Native Messaging Host registered for Chrome and Edge on Windows!
 pause
+

@@ -68,6 +68,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Package browser extension
+        run: |
+          python3 scripts/package_extension.py
+          mkdir -p release_assets
+          cp dist/veloce-extension.zip release_assets/
+
       - name: Download all built binaries
         uses: actions/download-artifact@v4
         with:
@@ -80,3 +86,4 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+
