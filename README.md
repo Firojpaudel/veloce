@@ -14,7 +14,7 @@ Veloce addresses this bottleneck through runtime dynamic bisection:
 
 | Metric | Single-Stream Client | Static Segmentation (Aria2 default) | Veloce Engine |
 | :--- | :--- | :--- | :--- |
-| **Partitioning** | None (sequential stream) | Static cuts ($N$ fixed segments) | **Dynamic Work-Stealing Bisection** |
+| **Partitioning** | None (sequential stream) | Static cuts (N fixed segments) | **Dynamic Work-Stealing Bisection** |
 | **Slow Thread Recovery** | None | Idle threads remain unallocated | **Active thread splits slowest slice** |
 | **Disk Serialization** | Sequential write | Sequential concatenation (`cat part* > file`) | **Atomic In-Place POSIX `pwrite`** |
 | **Filesystem Safety** | Unchecked growth | Post-allocation failure | **`posix_fallocate` contiguous blocks** |
@@ -61,11 +61,15 @@ flowchart TD
 ### Segment Bisection Algorithm
 When an active connection thread completes its allocated byte range:
 1. The `SegmentManager` acquires a synchronization lock and searches for the active segment with the largest remaining byte delta:
-   $$\Delta_{\text{rem}} = S_{\text{end}} - S_{\text{current}} + 1$$
-2. If $\Delta_{\text{rem}} \ge 2 \times \text{MIN\_SPLIT\_SIZE}$ (1 MB threshold):
-   $$\text{split\_point} = S_{\text{current}} + \lfloor \frac{\Delta_{\text{rem}}}{2} \rfloor$$
-3. The existing worker's boundary is clamped to $\text{split\_point}$.
-4. A new segment spanning $[\text{split\_point} + 1, S_{\text{end}}]$ is dispatched immediately to the idle thread via an HTTP `Range: bytes=start-end` request.
+   ```text
+   remaining = end - current + 1
+   ```
+2. If `remaining >= 2 * MIN_SPLIT_SIZE` (1 MB threshold):
+   ```text
+   split_point = current + floor(remaining / 2)
+   ```
+3. The existing worker's boundary is clamped to `split_point`.
+4. A new segment spanning `[split_point + 1, end]` is dispatched immediately to the idle thread via an HTTP `Range: bytes=start-end` request.
 
 ### In-Place Atomic Disk I/O
 Traditional tools write partial segments into temporary files (`part0.tmp`, `part1.tmp`) and perform an expensive sequential file copy upon reaching 100%. Veloce pre-allocates the complete file image using `posix_fallocate(2)` and uses `os.pwrite(fd, data, offset)` for atomic, non-locking disk writes directly into the final destination.
