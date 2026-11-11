@@ -157,4 +157,4 @@ python3 -m unittest discover -s tests
 
 ## 7. License
 
-Released under the **MIT License**. Authored by **Firoj Paudel** (`firojpaudel@gmail.com`).
+Released under the **MIT License**.
