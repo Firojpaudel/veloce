@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "types": ["chrome"],
+    "checkJs": false
+  },
+  "include": [
+    "extension/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
