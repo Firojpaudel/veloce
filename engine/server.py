@@ -142,12 +142,42 @@ STORE = TaskStore()
 
 
 class RequestHandler(BaseHTTPRequestHandler):
+    def _validate_origin(self) -> bool:
+        """
+        Guards against DNS rebinding and cross-site request forgery (CSRF).
+        Rejects requests from web pages; permits only the Veloce extension and local CLI.
+        """
+        host = self.headers.get("Host", "").split(":")[0]
+        if host not in ["127.0.0.1", "localhost"]:
+            self._send_json(403, {"error": "Forbidden: invalid Host header (DNS rebinding guard)"})
+            return False
+
+        origin = self.headers.get("Origin")
+        # CLI tools (curl, local scripts) do not send Origin header; permit loopback
+        if not origin:
+            return True
+
+        allowed_schemes = ("chrome-extension://", "moz-extension://")
+        allowed_hosts = ("http://127.0.0.1", "http://localhost")
+        if origin.startswith(allowed_schemes) or any(origin.startswith(h) for h in allowed_hosts):
+            return True
+
+        self._send_json(403, {"error": "Forbidden: unauthorized origin. Requests from websites are blocked."})
+        return False
+
     def _send_cors_headers(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin", "")
+        allowed_schemes = ("chrome-extension://", "moz-extension://")
+        allowed_hosts = ("http://127.0.0.1", "http://localhost")
+        if origin.startswith(allowed_schemes) or any(origin.startswith(h) for h in allowed_hosts):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
     def do_OPTIONS(self):
+        if not self._validate_origin():
+            return
         self.send_response(204)
         self._send_cors_headers()
         self.end_headers()
@@ -162,6 +192,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if not self._validate_origin():
+            return
         parsed = urlparse(self.path)
         path = parsed.path
 
@@ -182,6 +214,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         self._send_json(404, {"error": "Not Found"})
 
     def do_POST(self):
+        if not self._validate_origin():
+            return
         parsed = urlparse(self.path)
         path = parsed.path
 
