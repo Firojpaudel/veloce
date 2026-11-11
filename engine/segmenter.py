@@ -1,7 +1,7 @@
 """
 Veloce - High-Performance Dynamic Segmentation Download Engine
-Implements dynamic byte-range partitioning, zero-overhead sparse writing,
-and connection stealing/subdivision to maximize network throughput.
+Implements dynamic byte-range partitioning, atomic pwrite disk writes,
+and thread-safe work-stealing bisection.
 """
 
 import os
@@ -19,7 +19,7 @@ import urllib.error
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("VeloceEngine")
 
-MIN_SPLIT_SIZE = 1 * 1024 * 1024  # 1 MB minimum to bother splitting dynamically
+MIN_SPLIT_SIZE = 1 * 1024 * 1024  # 1 MB threshold for dynamic segment bisection
 CHUNK_BUFFER_SIZE = 64 * 1024     # 64 KB per read buffer
 
 
@@ -76,7 +76,6 @@ class SegmentManager:
 
     def _init_static_segments(self):
         if self.total_size <= 0:
-            # Unknown size, single stream
             seg = Segment(0, 0, 0)
             self.segments.append(seg)
             self._next_id = 1
@@ -101,8 +100,7 @@ class SegmentManager:
     def split_largest_segment(self) -> Optional[Segment]:
         """
         Dynamic Segmentation algorithm:
-        Finds the active segment with the largest remaining unfinished work.
-        Splits its remaining portion in half to saturate an idle thread.
+        Finds active segment with largest unfinished byte slice and bisects it.
         """
         with self.lock:
             candidates = [
@@ -112,16 +110,15 @@ class SegmentManager:
             if not candidates:
                 return None
 
-            # Pick segment with max remaining
             target = max(candidates, key=lambda s: s.remaining)
-            rem = target.remaining
-            split_point = target.current + (rem // 2)
+            rem = target.end - target.current + 1
+            if rem < (MIN_SPLIT_SIZE * 2):
+                return None
 
-            # Old segment now ends right before split_point
+            split_point = target.current + (rem // 2)
             old_end = target.end
             target.end = split_point
 
-            # New segment takes split_point + 1 to old_end
             new_seg = Segment(
                 segment_id=self._next_id,
                 start=split_point + 1,
@@ -168,19 +165,18 @@ class DownloadTask:
 
         self.total_size = 0
         self.resumable = False
-        self.filename = os.path.basename(output_path)
-        self.status = "INITIALIZING"  # INITIALIZING, DOWNLOADING, PAUSED, COMPLETED, ERROR
+        self.filename = os.path.basename(output_path) if not os.path.isdir(output_path) else ""
+        self.status = "INITIALIZING"
         self.error_message: Optional[str] = None
 
         self.manager: Optional[SegmentManager] = None
         self._stop_event = threading.Event()
-        self._file_lock = threading.Lock()
-        self._file_handle = None
+        self._fd: Optional[int] = None
 
         self.start_time = 0.0
         self.last_bytes = 0
         self.last_time = 0.0
-        self.current_speed = 0.0  # bytes/sec
+        self.current_speed = 0.0
 
     def _resolve_headers(self) -> dict:
         default_headers = {
@@ -198,22 +194,19 @@ class DownloadTask:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 headers = dict(resp.headers)
                 length = headers.get("Content-Length")
-                if length:
+                if length and length.isdigit():
                     self.total_size = int(length)
 
                 accept_ranges = headers.get("Accept-Ranges", "")
                 if "bytes" in accept_ranges.lower():
                     self.resumable = True
 
-                # Extract filename if not explicitly provided
                 cd = headers.get("Content-Disposition", "")
                 if "filename=" in cd:
-                    fname = cd.split("filename=")[-1].strip(' "\'')
-                    if fname:
-                        self.filename = fname
+                    raw_name = cd.split("filename=")[-1].strip(' "\'')
+                    self.filename = os.path.basename(raw_name)
         except Exception as e:
-            logger.warning("HEAD probe failed (%s), falling back to Range probe: %s", self.url, e)
-            # Try 0-0 range request
+            logger.debug(f"HEAD probe failed: {e}; attempting byte-range probe")
             test_headers = self._resolve_headers()
             test_headers["Range"] = "bytes=0-0"
             req = urllib.request.Request(self.url, headers=test_headers)
@@ -227,26 +220,23 @@ class DownloadTask:
                             if total.isdigit():
                                 self.total_size = int(total)
             except Exception as e2:
-                logger.error("Range probe also failed: %s", e2)
+                logger.debug(f"Range probe also failed: {e2}")
                 self.resumable = False
 
         if not self.filename:
             parsed = urlparse(self.url)
-            self.filename = os.path.basename(unquote(parsed.path)) or "downloaded_file"
+            sanitized = os.path.basename(unquote(parsed.path))
+            self.filename = sanitized or "download.bin"
 
-        # Update output path with resolved filename if output_path is directory
         if os.path.isdir(self.output_path):
             self.output_path = os.path.join(self.output_path, self.filename)
 
     def _worker_loop(self):
-        """Worker thread that processes segments and splits when idle."""
         while not self._stop_event.is_set():
             seg = self.manager.get_idle_segment()
             if not seg:
-                # No idle segment; attempt dynamic split of remaining busy segments!
                 seg = self.manager.split_largest_segment()
                 if not seg:
-                    # Nothing to do; either finished or all segments too small to split
                     break
 
             success = self._download_segment(seg)
@@ -259,25 +249,25 @@ class DownloadTask:
     def _download_segment(self, seg: Segment) -> bool:
         headers = self._resolve_headers()
         headers["Range"] = f"bytes={seg.current}-{seg.end}"
-
         req = urllib.request.Request(self.url, headers=headers)
+
         try:
             with urllib.request.urlopen(req, timeout=15) as resp:
-                while not self._stop_event.is_set() and seg.current <= seg.end:
-                    # Calculate how many bytes to read
-                    to_read = min(CHUNK_BUFFER_SIZE, seg.end - seg.current + 1)
-                    if to_read <= 0:
+                while not self._stop_event.is_set():
+                    with self.manager.lock:
+                        if seg.current > seg.end:
+                            break
+                        max_to_read = min(CHUNK_BUFFER_SIZE, seg.end - seg.current + 1)
+
+                    if max_to_read <= 0:
                         break
 
-                    data = resp.read(to_read)
+                    data = resp.read(max_to_read)
                     if not data:
                         break
 
-                    # Zero-overhead write directly to destination offset
-                    with self._file_lock:
-                        self._file_handle.seek(seg.current)
-                        self._file_handle.write(data)
-
+                    # Atomic in-place write at offset using POSIX pwrite
+                    os.pwrite(self._fd, data, seg.current)
                     seg.current += len(data)
 
                 return seg.current > seg.end
@@ -287,7 +277,6 @@ class DownloadTask:
             return False
 
     def _download_single_stream(self):
-        """Fallback for servers not supporting HTTP Range requests."""
         req = urllib.request.Request(self.url, headers=self._resolve_headers())
         with urllib.request.urlopen(req, timeout=20) as resp:
             with open(self.output_path, "wb") as f:
@@ -300,31 +289,29 @@ class DownloadTask:
                         self.manager.segments[0].current += len(data)
 
     def start(self):
-        """Begins dynamic accelerated download."""
         self.inspect_url()
         self.status = "DOWNLOADING"
         self.start_time = time.time()
         self.last_time = self.start_time
         self.last_bytes = 0
 
-        # Create target directory if needed
         out_dir = os.path.dirname(os.path.abspath(self.output_path))
         os.makedirs(out_dir, exist_ok=True)
 
         if not self.resumable or self.total_size <= 0:
-            logger.info("Server does not support range requests. Falling back to single-stream.")
             self.manager = SegmentManager(0, 1)
             self._download_single_stream()
             self.status = "COMPLETED"
             self._report_progress()
             return
 
-        # Pre-allocate sparse file
-        with open(self.output_path, "wb") as f:
-            f.seek(self.total_size - 1)
-            f.write(b"\0")
+        # Pre-allocate contiguous disk space to avoid filesystem fragmentation
+        self._fd = os.open(self.output_path, os.O_RDWR | os.O_CREAT, 0o644)
+        try:
+            os.posix_fallocate(self._fd, 0, self.total_size)
+        except (AttributeError, OSError):
+            os.ftruncate(self._fd, self.total_size)
 
-        self._file_handle = open(self.output_path, "r+b")
         self.manager = SegmentManager(self.total_size, self.num_connections)
 
         threads = []
@@ -333,7 +320,6 @@ class DownloadTask:
             t.start()
             threads.append(t)
 
-        # Progress monitor loop
         try:
             while not self._stop_event.is_set():
                 time.sleep(0.3)
@@ -345,9 +331,9 @@ class DownloadTask:
                     self._report_progress()
                     break
         finally:
-            if self._file_handle:
-                self._file_handle.flush()
-                self._file_handle.close()
+            if self._fd is not None:
+                os.close(self._fd)
+                self._fd = None
 
     def _update_speed(self):
         now = time.time()

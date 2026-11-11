@@ -1,118 +1,156 @@
-# ⚡ VELOCE
+# Veloce
+
 ### High-Performance Dynamic Multi-Stream Download Accelerator & Media Sniffer
 
-> **Open-Source, Trademark-Safe, Zero-Bloat Alternative to Proprietary Download Accelerators.**
+Veloce is a clean-room, open-source download accelerator and stream extraction engine designed to saturate network bandwidth through dynamic work-stealing segmentation, atomic in-place disk allocation, and direct browser network-layer stream interception.
 
 ---
 
-## 🌟 Why Veloce? The Technical Breakdown
+## 1. Architectural Principles
 
-Most download managers claim to accelerate downloads, but under the hood, almost all of them fall short of true line-rate saturation. Here is why **Veloce** is built differently:
+Most multi-connection downloaders partition a target resource into static byte ranges at initiation. When any single connection suffers from TCP window decay, jitter, or server-side throttling, the overall download speed drops to the throughput of the slowest connection.
 
-| Feature | Standard Browser | Static Chunk Downloaders (Aria2/Motrix default) | Veloce Accelerator |
+Veloce addresses this bottleneck through runtime dynamic bisection:
+
+| Metric | Single-Stream Client | Static Segmentation (Aria2 default) | Veloce Engine |
 | :--- | :--- | :--- | :--- |
-| **Connection Strategy** | Single connection | Static chunk partition (e.g., 8 fixed cuts) | **Dynamic Segment Bisection (Work-Stealing)** |
-| **Slow Thread Bottleneck** | Catastrophic | Vulnerable (stuck waiting for slowest chunk) | **Zero Bottleneck (Fast threads split slow chunks)** |
-| **Disk Reassembly** | Direct | Slow sequential concatenation (`cat part* > file`) | **Zero-Overhead Sparse In-Place Pwrite** |
-| **Socket Reuse** | Basic | Varies | **Persistent Keep-Alive Connection Pools** |
-| **Browser Extension** | Native | Basic RPC forwarder | **Manifest V3 + Real-Time Hologram Spectrum + Media Sniffer** |
+| **Partitioning** | None (sequential stream) | Static cuts ($N$ fixed segments) | **Dynamic Work-Stealing Bisection** |
+| **Slow Thread Recovery** | None | Idle threads remain unallocated | **Active thread splits slowest slice** |
+| **Disk Serialization** | Sequential write | Sequential concatenation (`cat part* > file`) | **Atomic In-Place POSIX `pwrite`** |
+| **Filesystem Safety** | Unchecked growth | Post-allocation failure | **`posix_fallocate` contiguous blocks** |
+| **Browser Integration** | Standard browser engine | External application launcher | **Manifest V3 + WebRequest Media Sniffer** |
 
 ---
 
-## 🧠 Core Architecture: Dynamic File Segmentation
-
-Unlike naive multi-connection downloaders that statically divide a 500 MB file into fixed slices, Veloce implements **active runtime work-stealing**:
+## 2. Dynamic Work-Stealing Engine
 
 ```mermaid
 flowchart TD
-    subgraph Browser ["🌐 Browser Environment"]
-        Ext["Extension (Manifest V3)"]
-        Sniff["Media Sniffer & Interceptor"]
-        Popup["HUD UI & Segment Spectrum"]
-        Sniff --> Ext
-        Ext <--> Popup
+    subgraph BrowserClient ["Browser Environment (Manifest V3)"]
+        WebRequest["WebRequest Stream Interceptor"]
+        DOMSniffer["HTML5 / MSE DOM Sniffer"]
+        PopupUI["Throughput HUD & Segment Spectrum"]
+        WebRequest --> ExtensionCore["Extension Service Worker"]
+        DOMSniffer --> ExtensionCore
+        ExtensionCore <--> PopupUI
     end
 
-    subgraph Bridge ["⚡ Local Bridge"]
-        Native["Native Messaging Host / REST API"]
+    subgraph NativeBridge ["Local IPC / Loopback Layer"]
+        HostBridge["Native Messaging Host / REST Bridge (127.0.0.1:9229)"]
     end
 
-    subgraph Core ["🚀 Veloce Engine Daemon"]
-        SM["Segment Manager & Work Stealer"]
-        W1["Thread #1 (Chunk A)"]
-        W2["Thread #2 (Chunk B)"]
-        W3["Thread #3 (Chunk C)"]
-        Sparse["Direct Sparse Disk Allocator"]
+    subgraph CoreEngine ["Veloce Daemon Core"]
+        SegmentCoordinator["Segment Manager & Dynamic Scheduler"]
+        Thread1["Worker Thread 1"]
+        Thread2["Worker Thread 2"]
+        ThreadN["Worker Thread N"]
+        DiskBuffer["Atomic POSIX pwrite Engine"]
 
-        SM --> W1
-        SM --> W2
-        SM --> W3
-        W1 -->|pwrite offset A| Sparse
-        W2 -->|pwrite offset B| Sparse
-        W3 -->|pwrite offset C| Sparse
+        SegmentCoordinator --> Thread1
+        SegmentCoordinator --> Thread2
+        SegmentCoordinator --> ThreadN
+        Thread1 -->|pwrite offset_1| DiskBuffer
+        Thread2 -->|pwrite offset_2| DiskBuffer
+        ThreadN -->|pwrite offset_n| DiskBuffer
     end
 
-    Ext -->|HTTP / JSON RPC| Bridge
-    Bridge --> Core
+    ExtensionCore --> NativeBridge
+    NativeBridge --> CoreEngine
 ```
 
-1. **Dynamic Bisection**: If Connection #1 finishes its segment while Connection #2 is progressing through a large chunk, Connection #1 splits the unreceived byte range of Connection #2 in half (`split_point = current + rem // 2`) and commands an HTTP range request for `Range: bytes=split_point+1-end`.
-2. **Zero Post-Processing Reassembly Delay**: Files are written directly to their target byte offsets in the destination file using sparse random-access seek/write (`pwrite`). When the final byte arrives from the network, the file is already 100% complete—no multi-minute waiting for parts to be stitched together.
+### Segment Bisection Algorithm
+When an active connection thread completes its allocated byte range:
+1. The `SegmentManager` acquires a synchronization lock and searches for the active segment with the largest remaining byte delta:
+   $$\Delta_{\text{rem}} = S_{\text{end}} - S_{\text{current}} + 1$$
+2. If $\Delta_{\text{rem}} \ge 2 \times \text{MIN\_SPLIT\_SIZE}$ (1 MB threshold):
+   $$\text{split\_point} = S_{\text{current}} + \lfloor \frac{\Delta_{\text{rem}}}{2} \rfloor$$
+3. The existing worker's boundary is clamped to $\text{split\_point}$.
+4. A new segment spanning $[\text{split\_point} + 1, S_{\text{end}}]$ is dispatched immediately to the idle thread via an HTTP `Range: bytes=start-end` request.
+
+### In-Place Atomic Disk I/O
+Traditional tools write partial segments into temporary files (`part0.tmp`, `part1.tmp`) and perform an expensive sequential file copy upon reaching 100%. Veloce pre-allocates the complete file image using `posix_fallocate(2)` and uses `os.pwrite(fd, data, offset)` for atomic, non-locking disk writes directly into the final destination.
 
 ---
 
-## 🎨 Veteran UI / UX Design
+## 3. Universal Media & Stream Sniffer
 
-- **HUD Bandwidth Meter**: Tabular numerical typography with live auto-scaling (`MB/s` / `KB/s`) and active thread gauges.
-- **Dynamic Segment Hologram**: Live multi-track visual spectrum rendering of every active connection thread with fluid animations and status states.
-- **In-Page Floating Video Sniffer**: A frosted-glass floating pill docked to HTML5 `<video>` and `<audio>` players across the web for 1-click accelerated media extraction.
-- **Clipboard Intelligence**: Auto-detection and 1-click paste for accelerated links.
+Modern streaming architectures (YouTube, Vimeo, Twitch, CDN media hosts) deliver fragmented streams via **Media Source Extensions (MSE)** using:
+- **HLS**: HTTP Live Streaming (`.m3u8` master and variant playlists)
+- **MPEG-DASH**: Dynamic Adaptive Streaming over HTTP (`.mpd` manifests)
+
+Veloce intercepts these streams at the browser network layer using `chrome.webRequest` header inspection. 
+
+When a media resource is detected:
+1. The manifest is probed for all available resolutions, codec configurations, and audio bitrates.
+2. The user can select **Balanced / Lightweight (720p)**, **Full HD (1080p)**, or **Audio Extraction (MP3 / M4A)**.
+3. Streams are multiplexed on-the-fly into an `.mp4` container using `ffmpeg` and `yt-dlp`.
 
 ---
 
-## 🚀 Quickstart Guide
+## 4. Repository Structure
 
-### 1. Prerequisites
-- Python 3.8+ (zero external pip dependencies required for core functionality)
-- Any Chromium-based browser (Google Chrome, Brave, Microsoft Edge, Chromium, Opera) or Firefox
+```
+.
+|-- README.md                     # Technical architecture and specifications
+|-- main.py                       # Unified CLI and daemon entrypoint
+|-- engine/
+|   |-- segmenter.py              # Dynamic segment scheduler and atomic disk writer
+|   |-- media.py                  # Universal stream prober and audio extractor
+|   |-- server.py                 # Loopback REST and WebSocket bridge
+|-- extension/
+|   |-- manifest.json             # Chromium / Firefox Manifest V3 manifest
+|   |-- icons/                    # Vector-rendered application icons
+|   `-- src/
+|       |-- background.js         # Network stream sniffer and download interceptor
+|       |-- content.js            # In-page media hook and stream selector dialog
+|       |-- content.css           # Modal overlay and floating button styles
+|       |-- popup.html            # Extension dashboard and throughput HUD
+|       |-- popup.css             # Glassmorphism design system
+|       `-- popup.js              # Real-time spectrum renderer and task manager
+|-- native_host/
+|   |-- native_host.py            # Standard I/O Native Messaging binary
+|   `-- install_native_host.sh    # Host manifest registrar script
+`-- tests/
+    `-- test_segmenter.py         # Thread-safe segmentation unit tests
+```
 
-### 2. Start the Veloce Core Daemon
+---
+
+## 5. Usage
+
+### Starting the Core Daemon
 ```bash
-# Start background engine daemon on 127.0.0.1:9229
-python3 main.py daemon
+python3 main.py daemon --port 9229 --host 127.0.0.1
 ```
 
-### 3. Load the Browser Extension
-1. Open your browser and navigate to:
-   - Chrome / Brave / Edge: `chrome://extensions`
-2. Enable **Developer mode** (top-right toggle).
-3. Click **Load unpacked**.
-4. Select the `extension/` directory from this repository.
+### Loading the Browser Extension
+1. Open `chrome://extensions` in Chromium, Chrome, Brave, or Edge.
+2. Toggle **Developer mode** on.
+3. Click **Load unpacked** and select the `extension/` directory.
 
-*(Optional)* Register the Linux Native Messaging Host for direct stdio communication:
+### Native Messaging Registration (Optional)
+To register the browser native host on Linux:
 ```bash
 ./native_host/install_native_host.sh
 ```
 
-### 4. CLI Direct Usage
-You can also use Veloce directly from the terminal without opening the browser:
+### Command-Line Downloads
 ```bash
-# Download a file with 16 dynamic connections
-python3 main.py download https://example.com/largefile.iso -c 16 -o ~/Downloads/
+# Accelerated multi-connection transfer
+python3 main.py download https://example.com/disk_image.iso -c 16 -o ~/Downloads/
 ```
 
 ---
 
-## 🧪 Testing
+## 6. Verification
 
-Run unit tests verifying thread-safe dynamic segmentation and work stealing:
+Run the test suite to verify dynamic segment allocation and bisection math:
 ```bash
 python3 -m unittest discover -s tests
 ```
 
 ---
 
-## 📄 License & Attribution
+## 7. License
 
-Designed and engineered by **Firoj Paudel** ([@Firojpaudel](https://github.com/Firojpaudel)).  
-Licensed under the **MIT License**.
+Released under the **MIT License**. Authored by **Firoj Paudel** (`firojpaudel@gmail.com`).

@@ -15,6 +15,7 @@ from urllib.parse import urlparse, parse_qs
 from typing import Dict
 
 from .segmenter import DownloadTask
+from .media import MediaEngine
 
 logger = logging.getLogger("VeloceServer")
 DEFAULT_DOWNLOAD_DIR = os.path.expanduser("~/Downloads")
@@ -142,6 +143,68 @@ class RequestHandler(BaseHTTPRequestHandler):
             payload = json.loads(post_data.decode("utf-8")) if post_data else {}
         except Exception:
             self._send_json(400, {"error": "Invalid JSON"})
+            return
+
+        if path == "/api/media/probe":
+            url = payload.get("url")
+            if not url:
+                self._send_json(400, {"error": "Missing 'url'"})
+                return
+            headers = payload.get("headers", {})
+            probe_result = MediaEngine.probe_url(url, headers)
+            self._send_json(200, {"success": True, "result": probe_result})
+            return
+
+        if path == "/api/media/download":
+            url = payload.get("url")
+            if not url:
+                self._send_json(400, {"error": "Missing 'url'"})
+                return
+
+            task_id = str(uuid.uuid4())[:8]
+            out_dir = payload.get("output_path", DEFAULT_DOWNLOAD_DIR)
+            format_id = payload.get("format_id", "bestvideo[height<=720]+bestaudio/best[height<=720]")
+            extract_audio = bool(payload.get("extract_audio", False))
+            audio_format = payload.get("audio_format", "mp3")
+            title = payload.get("title", f"media_{task_id}")
+
+            # Register in task store
+            with STORE.lock:
+                STORE.task_metadata[task_id] = {
+                    "id": task_id,
+                    "url": url,
+                    "status": "DOWNLOADING",
+                    "filename": f"{title}.{'mp3' if extract_audio else 'mp4'}",
+                    "percent": 5.0,
+                    "speed": 0.0,
+                    "downloaded": 0,
+                    "total_size": 0,
+                    "eta": 0,
+                    "segments": []
+                }
+
+            def run_stream():
+                try:
+                    MediaEngine.download_stream(
+                        url=url,
+                        output_dir=out_dir,
+                        filename_prefix=title,
+                        format_id=format_id,
+                        extract_audio=extract_audio,
+                        audio_format=audio_format
+                    )
+                    with STORE.lock:
+                        if task_id in STORE.task_metadata:
+                            STORE.task_metadata[task_id]["status"] = "COMPLETED"
+                            STORE.task_metadata[task_id]["percent"] = 100.0
+                except Exception as e:
+                    logger.error(f"Stream download failed: {e}")
+                    with STORE.lock:
+                        if task_id in STORE.task_metadata:
+                            STORE.task_metadata[task_id]["status"] = "ERROR"
+
+            threading.Thread(target=run_stream, daemon=True).start()
+            self._send_json(200, {"success": True, "task_id": task_id})
             return
 
         if path == "/api/download":
