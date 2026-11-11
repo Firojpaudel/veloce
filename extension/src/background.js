@@ -105,10 +105,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const filename = message.filename || (message.payload ? `${message.payload.title || 'video'}.mp4` : "download.mp4");
 
     // Try engine first
-    fetch(`${ENGINE_API}/status`, { signal: AbortSignal.timeout(600) })
+    fetch(`${ENGINE_API}/status`, { signal: AbortSignal.timeout(800) })
       .then(res => res.json())
       .then(() => {
-        // Engine online
+        // Engine online: handle full multi-stream or yt-dlp media extraction
         if (message.type === "DOWNLOAD_STREAM") {
           return fetch(`${ENGINE_API}/media/download`, {
             method: "POST",
@@ -121,8 +121,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })
       .then(res => sendResponse({ success: true }))
       .catch(() => {
-        // Fallback: Engine offline, download directly via Chrome API
-        if (targetUrl && !targetUrl.startsWith("blob:")) {
+        // Fallback when engine is offline:
+        // NEVER download a webpage HTML URL as a video
+        const isStreamingSite = targetUrl.includes("youtube.com") || targetUrl.includes("youtu.be") ||
+                                targetUrl.includes("vimeo.com") || targetUrl.includes("twitch.tv") ||
+                                targetUrl.startsWith("blob:");
+
+        if (isStreamingSite) {
+          chrome.notifications.create({
+            type: "basic",
+            iconUrl: "../icons/icon48.png",
+            title: "Veloce Engine Required",
+            message: "YouTube/streaming video extraction requires the Veloce Core daemon. Please run: python3 main.py daemon"
+          });
+          sendResponse({ success: false, reason: "ENGINE_REQUIRED" });
+          return;
+        }
+
+        // Direct downloadable file (e.g. .mp4, .zip, .iso, .pdf)
+        if (targetUrl.startsWith("http://") || targetUrl.startsWith("https://")) {
           chrome.downloads.download({
             url: targetUrl,
             filename: filename,
@@ -131,14 +148,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ success: !!dlId, direct: true });
           });
         } else {
-          // If blob on YouTube/video site, open tab to prompt user or trigger media download
-          chrome.downloads.download({
-            url: sender.tab ? sender.tab.url : targetUrl,
-            filename: filename,
-            saveAs: true
-          }, (dlId) => {
-            sendResponse({ success: !!dlId, direct: true });
-          });
+          sendResponse({ success: false, error: "Invalid URL" });
         }
       });
     return true;

@@ -225,6 +225,10 @@
           extract_audio: extractAudio,
           audio_format: audioFmt
         }
+      }, (resp) => {
+        if (resp && resp.reason === "ENGINE_REQUIRED") {
+          alert("Veloce Engine Required:\n\nDownloading videos from YouTube requires the local Veloce engine to mux video and audio.\n\nPlease start the engine in terminal:\npython3 main.py daemon");
+        }
       });
     }
 
