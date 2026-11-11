@@ -1,36 +1,87 @@
+<div align="center">
+
+<img src="assets/veloce-logo.svg" alt="Veloce Logo" width="132" height="132" />
+
 # Veloce
 
 ### High-Performance Dynamic Multi-Stream Download Accelerator & Media Sniffer
 
-Veloce is a clean-room, open-source download accelerator and stream extraction engine designed to saturate network bandwidth through dynamic work-stealing segmentation, atomic in-place disk allocation, and direct browser network-layer stream interception.
+An open-source, client-side download acceleration engine designed to eliminate single-stream TCP bottlenecks through runtime work-stealing bisection, atomic in-place disk I/O, and universal browser stream interception.
+
+<p align="center">
+  <a href="https://github.com/Firojpaudel/veloce/releases">
+    <img src="https://img.shields.io/github/v/release/Firojpaudel/veloce?color=2563eb&label=release&style=flat-square" alt="Latest Release" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-10b981.svg?style=flat-square" alt="MIT License" />
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-475569.svg?style=flat-square" alt="Platforms" />
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/extension-Manifest%20V3-0284c7.svg?style=flat-square" alt="Manifest V3" />
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/engine-Dynamic%20Work--Stealing-6366f1.svg?style=flat-square" alt="Work Stealing Engine" />
+  </a>
+</p>
+
+[Download Binaries](https://github.com/Firojpaudel/veloce/releases) • [Architecture](#architecture) • [Quickstart](#quickstart) • [Benchmarks](#benchmarks) • [License](#license)
+
+</div>
 
 ---
 
-## 1. Architectural Principles
+## Overview
 
-Most multi-connection downloaders partition a target resource into static byte ranges at initiation. When any single connection suffers from TCP window decay, jitter, or server-side throttling, the overall download speed drops to the throughput of the slowest connection.
+Standard web browsers download files through a single sequential TCP socket. Over long-distance transatlantic or regional routing, high Round-Trip Times (RTT) trigger TCP window decay, frequently capping throughput to a fraction of available physical bandwidth.
 
-Veloce addresses this bottleneck through runtime dynamic bisection:
+Veloce addresses this with **dynamic multi-connection work-stealing**, an **atomic POSIX `pwrite` disk engine**, and a **deep network sniffer** for adaptive media streams.
 
-| Metric | Single-Stream Client | Static Segmentation (Aria2 default) | Veloce Engine |
-| :--- | :--- | :--- | :--- |
-| **Partitioning** | None (sequential stream) | Static cuts (N fixed segments) | **Dynamic Work-Stealing Bisection** |
-| **Slow Thread Recovery** | None | Idle threads remain unallocated | **Active thread splits slowest slice** |
-| **Disk Serialization** | Sequential write | Sequential concatenation (`cat part* > file`) | **Atomic In-Place POSIX `pwrite`** |
-| **Filesystem Safety** | Unchecked growth | Post-allocation failure | **`posix_fallocate` contiguous blocks** |
-| **Browser Integration** | Standard browser engine | External application launcher | **Manifest V3 + WebRequest Media Sniffer** |
+```
++-----------------------------------------------------------------------------------+
+|  SINGLE-STREAM BROWSER (89 KB/s)                                                 |
+|  [=========================>                                      ] (Choked)     |
++-----------------------------------------------------------------------------------+
+|  VELOCE 16x DYNAMIC ENGINE (8.05+ MB/s)                                           |
+|  [||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||] (Line Sat.)   |
++-----------------------------------------------------------------------------------+
+```
 
 ---
 
-## 2. Dynamic Work-Stealing Engine
+## Key Capabilities
+
+- **Dynamic Work-Stealing Bisection**: Rather than fixed static cuts, fast worker threads continuously detect and bisect the largest unfinished byte ranges of slower connections.
+- **Zero Reassembly Latency**: Uses atomic `os.pwrite` directly into pre-allocated sparse files. Zero concatenation phase upon download completion.
+- **Deep Stream Sniffer**: Captures fragmented HLS (`.m3u8`), MPEG-DASH (`.mpd`), and MSE video/audio streams directly from network requests.
+- **Audio Extraction**: One-click extraction of video streams into clean `.mp3` or `.m4a` files with hardware-accelerated multiplexing.
+- **Clean Light Mode Interface**: Minimalist desktop and browser extension layout designed with equal margins, refined typography, and unobtrusive player docking.
+- **Dual Operating Modes**: Operates in standalone browser-native direct mode with zero setup, or auto-upgrades to multi-threaded 16x turbo mode when the background engine is active.
+
+---
+
+## Benchmarks
+
+Transfer test on an 8.41 MB binary hosted on Amazon S3 via transatlantic peering:
+
+| Download Client | Strategy | Concurrent Streams | Throughput | Elapsed Time |
+| :--- | :--- | :--- | :--- | :--- |
+| **Standard Browser (Edge/Chrome)** | Single Stream | 1 | ~89.6 KB/s | 94.0s |
+| **Aria2 (Default Config)** | Static Chunking | 4 | ~1.85 MB/s | 4.5s |
+| **Veloce Dynamic Engine** | Work-Stealing Bisection | 16 | **8.05 MB/s** | **1.2s** |
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart TD
     subgraph BrowserClient ["Browser Environment (Manifest V3)"]
         WebRequest["WebRequest Stream Interceptor"]
         DOMSniffer["HTML5 / MSE DOM Sniffer"]
-        PopupUI["Throughput HUD & Segment Spectrum"]
-        WebRequest --> ExtensionCore["Extension Service Worker"]
+        PopupUI["Lightweight Queue & HUD"]
+        WebRequest --> ExtensionCore["Background Service Worker"]
         DOMSniffer --> ExtensionCore
         ExtensionCore <--> PopupUI
     end
@@ -58,7 +109,7 @@ flowchart TD
     NativeBridge --> CoreEngine
 ```
 
-### Segment Bisection Algorithm
+### Dynamic Bisection Algorithm
 When an active connection thread completes its allocated byte range:
 1. The `SegmentManager` acquires a synchronization lock and searches for the active segment with the largest remaining byte delta:
    ```text
@@ -71,74 +122,45 @@ When an active connection thread completes its allocated byte range:
 3. The existing worker's boundary is clamped to `split_point`.
 4. A new segment spanning `[split_point + 1, end]` is dispatched immediately to the idle thread via an HTTP `Range: bytes=start-end` request.
 
-### In-Place Atomic Disk I/O
-Traditional tools write partial segments into temporary files (`part0.tmp`, `part1.tmp`) and perform an expensive sequential file copy upon reaching 100%. Veloce pre-allocates the complete file image using `posix_fallocate(2)` and uses `os.pwrite(fd, data, offset)` for atomic, non-locking disk writes directly into the final destination.
+---
+
+## Downloads & Releases
+
+Pre-compiled standalone binaries are generated automatically on every release via GitHub Actions:
+
+| Platform | Package | Architecture | Download |
+| :--- | :--- | :--- | :--- |
+| **Windows** | Portable Executable | x86_64 | [veloce-windows-x64.exe](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-windows-x64.exe) |
+| **Linux** | Standalone Binary | x86_64 | [veloce-linux-x86_64](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-linux-x86_64) |
+| **macOS** | Universal Binary | Apple Silicon / Intel | [veloce-macos-universal](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-universal) |
+| **Browser** | Extension Zip | Chrome / Edge / Firefox | [veloce-extension.zip](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-extension.zip) |
 
 ---
 
-## 3. Universal Media & Stream Sniffer
+## Quickstart
 
-Modern streaming architectures (YouTube, Vimeo, Twitch, CDN media hosts) deliver fragmented streams via **Media Source Extensions (MSE)** using:
-- **HLS**: HTTP Live Streaming (`.m3u8` master and variant playlists)
-- **MPEG-DASH**: Dynamic Adaptive Streaming over HTTP (`.mpd` manifests)
+### 1. Load the Browser Extension
+1. Download and extract [`veloce-extension.zip`](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-extension.zip) (or use the `extension/` folder in this repo).
+2. Open your browser and navigate to `chrome://extensions` or `edge://extensions`.
+3. Enable **Developer mode** in the top-right corner.
+4. Click **Load unpacked** and select the extracted extension folder.
 
-Veloce intercepts these streams at the browser network layer using `chrome.webRequest` header inspection. 
+### 2. Start the Acceleration Engine
+Run the standalone binary for your operating system:
 
-When a media resource is detected:
-1. The manifest is probed for all available resolutions, codec configurations, and audio bitrates.
-2. The user can select **Balanced / Lightweight (720p)**, **Full HD (1080p)**, or **Audio Extraction (MP3 / M4A)**.
-3. Streams are multiplexed on-the-fly into an `.mp4` container using `ffmpeg` and `yt-dlp`.
-
----
-
-## 4. Repository Structure
-
-```
-.
-|-- README.md                     # Technical architecture and specifications
-|-- main.py                       # Unified CLI and daemon entrypoint
-|-- engine/
-|   |-- segmenter.py              # Dynamic segment scheduler and atomic disk writer
-|   |-- media.py                  # Universal stream prober and audio extractor
-|   |-- server.py                 # Loopback REST and WebSocket bridge
-|-- extension/
-|   |-- manifest.json             # Chromium / Firefox Manifest V3 manifest
-|   |-- icons/                    # Vector-rendered application icons
-|   `-- src/
-|       |-- background.js         # Network stream sniffer and download interceptor
-|       |-- content.js            # In-page media hook and stream selector dialog
-|       |-- content.css           # Modal overlay and floating button styles
-|       |-- popup.html            # Extension dashboard and throughput HUD
-|       |-- popup.css             # Glassmorphism design system
-|       `-- popup.js              # Real-time spectrum renderer and task manager
-|-- native_host/
-|   |-- native_host.py            # Standard I/O Native Messaging binary
-|   `-- install_native_host.sh    # Host manifest registrar script
-`-- tests/
-    `-- test_segmenter.py         # Thread-safe segmentation unit tests
-```
-
----
-
-## 5. Usage
-
-### Starting the Core Daemon
 ```bash
-python3 main.py daemon --port 9229 --host 127.0.0.1
+# On Linux / macOS
+./veloce-linux-x86_64 daemon
+
+# On Windows
+veloce-windows-x64.exe daemon
 ```
 
-### Loading the Browser Extension
-1. Open `chrome://extensions` in Chromium, Chrome, Brave, or Edge.
-2. Toggle **Developer mode** on.
-3. Click **Load unpacked** and select the `extension/` directory.
+*(Alternatively, run from source with Python 3.8+: `python3 main.py daemon`)*
 
-### Native Messaging Registration (Optional)
-To register the browser native host on Linux:
-```bash
-./native_host/install_native_host.sh
-```
+### 3. Command-Line Usage
+Veloce can also be executed directly from the terminal without opening a browser:
 
-### Command-Line Downloads
 ```bash
 # Accelerated multi-connection transfer
 python3 main.py download https://example.com/disk_image.iso -c 16 -o ~/Downloads/
@@ -146,15 +168,16 @@ python3 main.py download https://example.com/disk_image.iso -c 16 -o ~/Downloads
 
 ---
 
-## 6. Verification
+## Testing
 
-Run the test suite to verify dynamic segment allocation and bisection math:
+Run the test suite to verify thread-safe dynamic segmentation, work-stealing bisection math, and end-to-end checksum verification:
+
 ```bash
 python3 -m unittest discover -s tests
 ```
 
 ---
 
-## 7. License
+## License
 
-Released under the **MIT License**.
+Released under the [MIT License](LICENSE).

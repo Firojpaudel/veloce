@@ -189,39 +189,41 @@ class DownloadTask:
 
     def inspect_url(self):
         """Probes the remote server to detect Content-Length, filename, and Range support."""
-        req = urllib.request.Request(self.url, headers=self._resolve_headers(), method="HEAD")
+        # Follow redirects and probe range support directly
+        test_headers = self._resolve_headers()
+        test_headers["Range"] = "bytes=0-0"
+        req = urllib.request.Request(self.url, headers=test_headers)
+
         try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                # Cache final resolved URL after redirects (e.g. AWS S3 signed URL)
+                self.url = resp.geturl()
                 headers = dict(resp.headers)
-                length = headers.get("Content-Length")
-                if length and length.isdigit():
-                    self.total_size = int(length)
+
+                # Parse Content-Range or Content-Length
+                cr = headers.get("Content-Range", "")
+                if "/" in cr:
+                    total = cr.split("/")[-1].strip()
+                    if total.isdigit():
+                        self.total_size = int(total)
+                        self.resumable = True
+                elif resp.status == 200:
+                    cl = headers.get("Content-Length", "")
+                    if cl and cl.isdigit():
+                        self.total_size = int(cl)
 
                 accept_ranges = headers.get("Accept-Ranges", "")
-                if "bytes" in accept_ranges.lower():
+                if resp.status == 206 or "bytes" in accept_ranges.lower():
                     self.resumable = True
 
+                # Parse Content-Disposition if present
                 cd = headers.get("Content-Disposition", "")
                 if "filename=" in cd:
                     raw_name = cd.split("filename=")[-1].strip(' "\'')
                     self.filename = os.path.basename(raw_name)
         except Exception as e:
-            logger.debug(f"HEAD probe failed: {e}; attempting byte-range probe")
-            test_headers = self._resolve_headers()
-            test_headers["Range"] = "bytes=0-0"
-            req = urllib.request.Request(self.url, headers=test_headers)
-            try:
-                with urllib.request.urlopen(req, timeout=10) as resp:
-                    if resp.status == 206:
-                        self.resumable = True
-                        cr = resp.headers.get("Content-Range", "")
-                        if "/" in cr:
-                            total = cr.split("/")[-1].strip()
-                            if total.isdigit():
-                                self.total_size = int(total)
-            except Exception as e2:
-                logger.debug(f"Range probe also failed: {e2}")
-                self.resumable = False
+            logger.debug(f"Direct probe failed: {e}")
+            self.resumable = False
 
         if not self.filename:
             parsed = urlparse(self.url)
@@ -229,6 +231,9 @@ class DownloadTask:
             self.filename = sanitized or "download.bin"
 
         if os.path.isdir(self.output_path):
+            self.output_path = os.path.join(self.output_path, self.filename)
+        elif self.output_path.endswith("/") or self.output_path.endswith("\\"):
+            os.makedirs(self.output_path, exist_ok=True)
             self.output_path = os.path.join(self.output_path, self.filename)
 
     def _worker_loop(self):
