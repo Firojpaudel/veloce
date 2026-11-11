@@ -1,3 +1,4 @@
+/* global chrome */
 /**
  * VELOCE - POPUP CONTROLLER (CLEAN LIGHT DESIGN)
  */

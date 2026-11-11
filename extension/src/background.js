@@ -1,3 +1,4 @@
+/* global chrome */
 /**
  * VELOCE BACKGROUND SERVICE WORKER
  * - Intercepts downloads & forwards to engine if available, or falls back to native download.

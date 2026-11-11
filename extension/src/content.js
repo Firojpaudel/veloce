@@ -1,3 +1,4 @@
+/* global chrome */
 /**
  * VELOCE CONTENT SCRIPT
  * - Clean media player docking (only on primary active players).
