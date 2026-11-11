@@ -3,144 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Veloce Accelerator</title>
+  <title>Veloce</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="veloce-app">
-    <!-- Ambient Backdrop Glow -->
-    <div class="ambient-glow"></div>
-
+  <div class="popup-container">
     <!-- Header -->
-    <header class="app-header">
-      <div class="brand-container">
-        <div class="brand-logo">
-          <svg class="bolt-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="url(#bolt-grad)" stroke="url(#bolt-stroke)" stroke-width="1.2" stroke-linejoin="round"/>
-            <defs>
-              <linearGradient id="bolt-grad" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#38BDF8"/>
-                <stop offset="1" stop-color="#6366F1"/>
-              </linearGradient>
-              <linearGradient id="bolt-stroke" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#7DD3FC"/>
-                <stop offset="1" stop-color="#818CF8"/>
-              </linearGradient>
-            </defs>
+    <header class="header">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
           </svg>
         </div>
-        <div class="brand-text">
-          <div class="brand-title">
-            <span>VELOCE</span>
-            <span class="version-pill">v1.0</span>
-          </div>
-          <div class="engine-badge offline" id="engine-status">
-            <span class="status-dot"></span>
-            <span class="status-label">Engine Offline</span>
+        <div class="brand-info">
+          <span class="brand-name">Veloce</span>
+          <div class="status-indicator" id="engine-status">
+            <span class="status-dot online"></span>
+            <span class="status-text">Ready</span>
           </div>
         </div>
       </div>
 
-      <div class="header-actions">
-        <div class="toggle-group" title="Auto-intercept browser downloads">
-          <span class="toggle-label">Intercept</span>
-          <label class="glow-switch">
-            <input type="checkbox" id="intercept-toggle" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
+      <div class="header-right">
+        <label class="toggle-control" title="Toggle download interception">
+          <span class="toggle-text">Intercept</span>
+          <input type="checkbox" id="intercept-toggle" checked>
+          <span class="switch-track">
+            <span class="switch-thumb"></span>
+          </span>
+        </label>
       </div>
     </header>
 
-    <!-- Global Speed HUD -->
-    <section class="hud-card">
-      <div class="hud-left">
-        <div class="hud-caption">CURRENT THROUGHPUT</div>
-        <div class="hud-speed-row">
-          <span class="hud-speed-val" id="hud-speed">0.0</span>
-          <span class="hud-speed-unit" id="hud-unit">MB/s</span>
-        </div>
-      </div>
-      <div class="hud-right">
-        <div class="hud-stat">
-          <span class="stat-label">Active Tasks</span>
-          <span class="stat-value" id="hud-active-count">0</span>
-        </div>
-        <div class="hud-stat">
-          <span class="stat-label">Dynamic Threads</span>
-          <span class="stat-value highlight" id="hud-threads">16x</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Download Input Bar -->
-    <section class="action-bar">
-      <div class="input-wrapper">
-        <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+    <!-- URL Input -->
+    <div class="input-card">
+      <div class="input-field">
+        <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
         </svg>
-        <input type="text" id="url-input" placeholder="Paste link or video URL to accelerate..." spellcheck="false" autocomplete="off"/>
-        <button class="btn-paste" id="btn-paste" title="Paste from clipboard">
+        <input type="text" id="url-input" placeholder="Paste download URL or media link..." spellcheck="false" autocomplete="off" />
+        <button class="btn-icon" id="btn-paste" title="Paste from clipboard">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>
         </button>
       </div>
-      <button class="btn-accelerate" id="btn-add">
-        <span>Accelerate</span>
-        <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
-      </button>
-    </section>
+      <button class="btn-primary" id="btn-add">Download</button>
+    </div>
 
-    <!-- Tasks Section -->
-    <section class="tasks-section">
-      <div class="section-header">
-        <span class="section-title">QUEUE & TRANSFERS</span>
-        <div class="section-tools">
-          <button class="icon-tool" id="btn-clear-done" title="Clear completed">Clear Done</button>
-          <button class="icon-tool refresh-tool" id="btn-refresh" title="Refresh">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"/>
-              <path d="M1 20v-6h6"/>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="tasks-scroll-area" id="tasks-list">
-        <!-- Rendered dynamically -->
-        <div class="empty-state">
-          <div class="empty-icon-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-          </div>
-          <div class="empty-text">No active transfers</div>
-          <div class="empty-sub">Links and video streams will automatically appear here</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="app-footer">
-      <div class="footer-left">
-        <span class="open-source-tag">MIT Open Source</span>
-      </div>
-      <div class="footer-right">
-        <a href="https://github.com/Firojpaudel/veloce" target="_blank" class="github-link">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+    <!-- Active Transfers / Queue -->
+    <div class="section-head">
+      <span class="section-label">Active Transfers</span>
+      <div class="section-actions">
+        <button class="btn-link" id="btn-clear-done">Clear Completed</button>
+        <button class="btn-icon-small" id="btn-refresh" title="Refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
           </svg>
-          <span>Firoj Paudel</span>
-        </a>
+        </button>
+      </div>
+    </div>
+
+    <div class="tasks-list" id="tasks-list">
+      <div class="empty-state">
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <div class="empty-title">No Active Transfers</div>
+        <div class="empty-sub">Downloads and media captures will appear here</div>
+      </div>
+    </div>
+
+    <!-- Footer Stats -->
+    <footer class="footer">
+      <div class="footer-stats">
+        <span class="stat-unit" id="speed-meter">Throughput: 0.0 MB/s</span>
+      </div>
+      <div class="footer-meta">
+        <span class="engine-hint" id="engine-mode-hint">Browser Native Mode</span>
       </div>
     </footer>
   </div>

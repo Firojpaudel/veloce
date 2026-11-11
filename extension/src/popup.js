@@ -1,11 +1,12 @@
 /**
- * VELOCE ACCELERATOR - POPUP CONTROLLER
- * Engineered for buttery-smooth 60fps rendering, live segment holograms, and rapid interaction.
+ * VELOCE - POPUP CONTROLLER (CLEAN LIGHT DESIGN)
  */
 
 const ENGINE_API = "http://127.0.0.1:9229/api";
 
-const statusBadge = document.getElementById("engine-status");
+const statusDot = document.querySelector(".status-dot");
+const statusText = document.querySelector(".status-text");
+const engineHint = document.getElementById("engine-mode-hint");
 const interceptToggle = document.getElementById("intercept-toggle");
 const urlInput = document.getElementById("url-input");
 const btnPaste = document.getElementById("btn-paste");
@@ -13,12 +14,11 @@ const btnAdd = document.getElementById("btn-add");
 const btnRefresh = document.getElementById("btn-refresh");
 const btnClearDone = document.getElementById("btn-clear-done");
 const tasksList = document.getElementById("tasks-list");
+const speedMeter = document.getElementById("speed-meter");
 
-const hudSpeed = document.getElementById("hud-speed");
-const hudUnit = document.getElementById("hud-unit");
-const hudActiveCount = document.getElementById("hud-active-count");
+let engineOnline = false;
 
-// Load intercept setting
+// Intercept toggle state
 chrome.storage.local.get(["interceptEnabled"], (res) => {
   if (res.interceptEnabled !== undefined) {
     interceptToggle.checked = res.interceptEnabled;
@@ -29,7 +29,6 @@ interceptToggle.addEventListener("change", () => {
   chrome.storage.local.set({ interceptEnabled: interceptToggle.checked });
 });
 
-// Clipboard paste helper
 btnPaste.addEventListener("click", async () => {
   try {
     const text = await navigator.clipboard.readText();
@@ -38,17 +37,9 @@ btnPaste.addEventListener("click", async () => {
       urlInput.focus();
     }
   } catch (err) {
-    console.debug("Clipboard read access not granted:", err);
+    // Clipboard permission not granted
   }
 });
-
-function formatSpeed(bytesPerSec) {
-  if (!bytesPerSec || bytesPerSec <= 0) return { val: "0.0", unit: "MB/s" };
-  if (bytesPerSec < 1024 * 1024) {
-    return { val: (bytesPerSec / 1024).toFixed(1), unit: "KB/s" };
-  }
-  return { val: (bytesPerSec / (1024 * 1024)).toFixed(2), unit: "MB/s" };
-}
 
 function formatBytes(bytes) {
   if (!bytes || bytes === 0) return "0 B";
@@ -58,204 +49,188 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
-function getFileIcon(filename) {
-  const ext = (filename || "").split('.').pop().toLowerCase();
-  if (["mp4", "mkv", "webm", "avi", "mov", "flv", "m3u8"].includes(ext)) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`;
-  }
-  if (["mp3", "wav", "flac", "aac", "ogg", "m4a"].includes(ext)) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`;
-  }
-  if (["zip", "rar", "7z", "tar", "gz", "bz2", "xz"].includes(ext)) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>`;
-  }
-  if (["iso", "dmg", "img", "bin"].includes(ext)) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>`;
-  }
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>`;
-}
-
 async function checkEngineStatus() {
   try {
-    const res = await fetch(`${ENGINE_API}/status`, { signal: AbortSignal.timeout(1200) });
+    const res = await fetch(`${ENGINE_API}/status`, { signal: AbortSignal.timeout(1000) });
     if (res.ok) {
-      statusBadge.className = "engine-badge online";
-      statusBadge.querySelector(".status-label").textContent = "Core Engine Active";
+      engineOnline = true;
+      statusDot.className = "status-dot";
+      statusText.textContent = "Engine Connected";
+      engineHint.textContent = "16x Dynamic Segmentation Active";
       return true;
     }
   } catch (err) {
-    statusBadge.className = "engine-badge offline";
-    statusBadge.querySelector(".status-label").textContent = "Engine Offline";
+    engineOnline = false;
+    statusDot.className = "status-dot offline";
+    statusText.textContent = "Standby (Direct Mode)";
+    engineHint.textContent = "Standard Direct Download Active";
   }
   return false;
 }
 
 async function fetchTasks() {
-  const isOnline = await checkEngineStatus();
-  if (!isOnline) {
-    hudSpeed.textContent = "0.0";
-    hudUnit.textContent = "MB/s";
-    hudActiveCount.textContent = "0";
-    tasksList.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon-wrap" style="color: #f43f5e;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-        </div>
-        <div class="empty-text">Veloce Engine Not Detected</div>
-        <div class="empty-sub" style="font-family: monospace; margin-top: 6px; color: #94a3b8;">python3 main.py daemon</div>
-      </div>
-    `;
+  await checkEngineStatus();
+
+  if (!engineOnline) {
+    // Check Chrome native downloads
+    chrome.downloads.search({ limit: 5, orderBy: ["-startTime"] }, (items) => {
+      renderChromeDownloads(items || []);
+    });
     return;
   }
 
   try {
     const res = await fetch(`${ENGINE_API}/tasks`);
     const data = await res.json();
-    renderTasks(data.tasks || []);
+    renderEngineTasks(data.tasks || []);
   } catch (err) {
-    console.debug("Error updating tasks:", err);
+    chrome.downloads.search({ limit: 5, orderBy: ["-startTime"] }, (items) => {
+      renderChromeDownloads(items || []);
+    });
   }
 }
 
-function renderTasks(tasks) {
-  let totalBandwidth = 0;
-  let activeCount = 0;
-
+function renderEngineTasks(tasks) {
   if (tasks.length === 0) {
-    hudSpeed.textContent = "0.0";
-    hudUnit.textContent = "MB/s";
-    hudActiveCount.textContent = "0";
-    tasksList.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-        </div>
-        <div class="empty-text">No active transfers</div>
-        <div class="empty-sub">Links and video streams will automatically appear here</div>
-      </div>
-    `;
+    showEmpty();
+    speedMeter.textContent = "Throughput: 0.0 MB/s";
     return;
   }
 
+  let totalSpeed = 0;
   tasksList.innerHTML = "";
 
   tasks.forEach((task) => {
     if (task.status === "DOWNLOADING") {
-      totalBandwidth += task.speed || 0;
-      activeCount++;
+      totalSpeed += task.speed || 0;
     }
 
-    const card = document.createElement("div");
-    card.className = "task-card";
-
-    // Build segments spectrum bar (Dynamic segment hologram)
-    let segmentsHtml = "";
-    if (task.segments && task.segments.length > 0) {
-      segmentsHtml = `<div class="segment-spectrum" title="Dynamic Multi-Stream Spectrum">` +
-        task.segments.map(s => {
-          const cls = s.completed ? "completed" : (s.active ? "active" : "");
-          return `<div class="segment-slice ${cls}"></div>`;
-        }).join("") +
-        `</div>`;
-    }
-
-    const iconSvg = getFileIcon(task.filename);
-    const speedInfo = formatSpeed(task.speed);
+    const item = document.createElement("div");
+    item.className = "task-item";
     const isDone = task.status === "COMPLETED";
 
-    card.innerHTML = `
-      <div class="card-top">
-        <div class="file-info">
-          <div class="file-type-icon">${iconSvg}</div>
-          <span class="file-name" title="${task.filename}">${task.filename}</span>
-        </div>
-        <span class="card-speed-badge">${isDone ? "COMPLETE" : `${speedInfo.val} ${speedInfo.unit}`}</span>
+    item.innerHTML = `
+      <div class="task-top">
+        <span class="task-title" title="${task.filename}">${task.filename}</span>
+        <span class="task-rate">${isDone ? "Done" : `${formatBytes(task.speed || 0)}/s`}</span>
       </div>
-
       <div class="progress-track">
-        <div class="progress-fill" style="width: ${task.percent || 0}%;"></div>
+        <div class="progress-bar" style="width: ${task.percent || 0}%;"></div>
       </div>
-
-      ${segmentsHtml}
-
-      <div class="card-meta">
-        <span class="meta-stats">${formatBytes(task.downloaded || 0)} / ${formatBytes(task.total_size || 0)}</span>
-        <span class="meta-status ${isDone ? 'completed' : ''}">${task.status} (${task.percent || 0}%)</span>
-      </div>
-
-      <div class="card-actions">
-        ${!isDone ? `<button class="action-pill" onclick="window.velocePause('${task.id}')">Pause</button>` : ''}
-        <button class="action-pill danger" onclick="window.veloceCancel('${task.id}')">Remove</button>
+      <div class="task-bottom">
+        <span>${formatBytes(task.downloaded || 0)} / ${formatBytes(task.total_size || 0)} (${task.percent || 0}%)</span>
+        <div class="task-ctrls">
+          ${!isDone ? `<button class="btn-ctrl" onclick="window.pauseTask('${task.id}')">Pause</button>` : ""}
+          <button class="btn-ctrl danger" onclick="window.cancelTask('${task.id}')">Remove</button>
+        </div>
       </div>
     `;
-
-    tasksList.appendChild(card);
+    tasksList.appendChild(item);
   });
 
-  const globalSpeed = formatSpeed(totalBandwidth);
-  hudSpeed.textContent = globalSpeed.val;
-  hudUnit.textContent = globalSpeed.unit;
-  hudActiveCount.textContent = activeCount.toString();
+  speedMeter.textContent = `Throughput: ${formatBytes(totalSpeed)}/s`;
 }
 
-window.velocePause = async function(id) {
+function renderChromeDownloads(items) {
+  const activeItems = items.filter(i => i.state === "in_progress" || i.state === "complete");
+  if (activeItems.length === 0) {
+    showEmpty();
+    speedMeter.textContent = "Throughput: 0.0 MB/s";
+    return;
+  }
+
+  tasksList.innerHTML = "";
+  let totalBytesSec = 0;
+
+  activeItems.forEach(item => {
+    const filename = item.filename ? item.filename.split("/").pop().split("\\").pop() : "download";
+    const percent = item.totalBytes > 0 ? Math.round((item.bytesReceived / item.totalBytes) * 100) : 0;
+    const isDone = item.state === "complete";
+    if (item.estimatedEndTime && !isDone) totalBytesSec += item.bytesReceived;
+
+    const div = document.createElement("div");
+    div.className = "task-item";
+    div.innerHTML = `
+      <div class="task-top">
+        <span class="task-title" title="${filename}">${filename}</span>
+        <span class="task-rate">${isDone ? "Completed" : `${percent}%`}</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-bar" style="width: ${isDone ? 100 : percent}%;"></div>
+      </div>
+      <div class="task-bottom">
+        <span>${formatBytes(item.bytesReceived)} ${item.totalBytes > 0 ? `/ ${formatBytes(item.totalBytes)}` : ""}</span>
+        <span style="text-transform: capitalize;">${item.state.replace("_", " ")}</span>
+      </div>
+    `;
+    tasksList.appendChild(div);
+  });
+
+  speedMeter.textContent = `Active Transfers: ${activeItems.filter(i => i.state === "in_progress").length}`;
+}
+
+function showEmpty() {
+  tasksList.innerHTML = `
+    <div class="empty-state">
+      <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      <div class="empty-title">No Active Transfers</div>
+      <div class="empty-sub">Downloads will appear here</div>
+    </div>
+  `;
+}
+
+window.pauseTask = async function(id) {
   try {
     await fetch(`${ENGINE_API}/tasks/${id}/pause`, { method: "POST" });
     fetchTasks();
-  } catch (e) {
-    console.error(e);
-  }
+  } catch (e) {}
 };
 
-window.veloceCancel = async function(id) {
+window.cancelTask = async function(id) {
   try {
     await fetch(`${ENGINE_API}/tasks/${id}/cancel`, { method: "POST" });
     fetchTasks();
-  } catch (e) {
-    console.error(e);
-  }
+  } catch (e) {}
 };
 
-btnClearDone.addEventListener("click", async () => {
-  try {
-    const res = await fetch(`${ENGINE_API}/tasks`);
-    const data = await res.json();
-    for (const t of (data.tasks || [])) {
-      if (t.status === "COMPLETED") {
-        await fetch(`${ENGINE_API}/tasks/${t.id}/cancel`, { method: "POST" });
-      }
-    }
-    fetchTasks();
-  } catch (e) {
-    console.error(e);
-  }
-});
-
-btnAdd.addEventListener("click", async () => {
+btnAdd.addEventListener("click", () => {
   const url = urlInput.value.trim();
   if (!url) return;
 
   chrome.runtime.sendMessage({
     type: "DOWNLOAD_URL",
     url: url
-  }, (resp) => {
+  }, () => {
     urlInput.value = "";
     fetchTasks();
   });
 });
 
 urlInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    btnAdd.click();
+  if (e.key === "Enter") btnAdd.click();
+});
+
+btnClearDone.addEventListener("click", async () => {
+  if (engineOnline) {
+    try {
+      const res = await fetch(`${ENGINE_API}/tasks`);
+      const data = await res.json();
+      for (const t of (data.tasks || [])) {
+        if (t.status === "COMPLETED") {
+          await fetch(`${ENGINE_API}/tasks/${t.id}/cancel`, { method: "POST" });
+        }
+      }
+    } catch (e) {}
   }
+  chrome.downloads.erase({ state: "complete" });
+  fetchTasks();
 });
 
 btnRefresh.addEventListener("click", fetchTasks);
 
-// Initial query and live 1.2s poll
 fetchTasks();
-setInterval(fetchTasks, 1200);
+setInterval(fetchTasks, 2000);

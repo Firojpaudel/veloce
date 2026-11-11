@@ -1,22 +1,93 @@
 /**
- * VELOCE CONTENT SCRIPT - STREAM & MEDIA SNIFFER WITH QUALITY SELECTOR
- * Detects HTML5 video, HLS, DASH, and MSE streams and presents
- * a veteran quality & audio extraction selection dialog.
+ * VELOCE CONTENT SCRIPT
+ * - Clean media player docking (only on primary active players).
+ * - Avoids preview cards, thumbnail hovers, and feed clutter.
+ * - Single floating button that only appears on player hover.
  */
 
 (function () {
-  const VELOCE_CLASS = "veloce-floating-panel";
+  const BADGE_CLASS = "veloce-floating-badge";
 
-  function formatBytes(bytes) {
-    if (!bytes || bytes === 0) return "Lightweight / Dynamic";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  function isYouTube() {
+    return window.location.hostname.includes("youtube.com");
+  }
+
+  function shouldHookElement(video) {
+    if (!video) return false;
+
+    // Filter out miniature video preview elements (e.g. YouTube feed cards, hover previews)
+    const rect = video.getBoundingClientRect();
+    if (rect.width < 360 || rect.height < 200) {
+      return false;
+    }
+
+    if (isYouTube()) {
+      // On YouTube, only hook the primary player on watch/embed pages
+      const isWatchPage = window.location.pathname.startsWith("/watch") || window.location.pathname.startsWith("/embed");
+      if (!isWatchPage) return false;
+
+      const player = video.closest("#movie_player, .html5-video-player");
+      return !!player;
+    }
+
+    return true;
+  }
+
+  function attachDownloadBadge(video) {
+    if (video.dataset.veloceHooked) return;
+    if (!shouldHookElement(video)) return;
+
+    // Identify parent container
+    const container = video.parentElement;
+    if (!container) return;
+
+    // Prevent duplicate badges on same container
+    if (container.querySelector(`.${BADGE_CLASS}`)) return;
+
+    video.dataset.veloceHooked = "true";
+    container.classList.add("veloce-player-container");
+
+    // Ensure container has relative/absolute positioning
+    const style = window.getComputedStyle(container);
+    if (style.position === "static") {
+      container.style.position = "relative";
+    }
+
+    const badge = document.createElement("button");
+    badge.className = BADGE_CLASS;
+    badge.title = "Download with Veloce";
+    badge.innerHTML = `
+      <svg class="veloce-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      <span>Download</span>
+    `;
+
+    container.appendChild(badge);
+
+    badge.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      let mediaUrl = video.currentSrc || video.src;
+      if (!mediaUrl) {
+        const srcEl = video.querySelector("source");
+        if (srcEl) mediaUrl = srcEl.src;
+      }
+
+      // If blob on YouTube or streaming site, use full page URL
+      if (!mediaUrl || mediaUrl.startsWith("blob:")) {
+        mediaUrl = window.location.href;
+      }
+
+      const cleanTitle = (document.title || "video").replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+      openQualityModal(mediaUrl, cleanTitle);
+    });
   }
 
   function openQualityModal(mediaUrl, pageTitle) {
-    // Remove any existing modal
     const existing = document.querySelector(".veloce-modal-backdrop");
     if (existing) existing.remove();
 
@@ -25,9 +96,9 @@
     backdrop.innerHTML = `
       <div class="veloce-modal-dialog">
         <div class="veloce-dialog-header">
-          <div class="veloce-dialog-title-box">
-            <svg class="veloce-sniff-icon" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2">
-              <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z"/>
+          <div class="veloce-dialog-title-group">
+            <svg class="veloce-badge-icon" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5">
+              <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
             </svg>
             <span class="veloce-dialog-title">${pageTitle}</span>
           </div>
@@ -40,8 +111,26 @@
         </div>
 
         <div class="veloce-formats-list" id="veloce-formats-container">
-          <div style="padding: 24px; text-align: center; color: #94a3b8; font-size: 12px;">
-            Analyzing stream resolutions and audio bitrates...
+          <div class="veloce-format-row">
+            <div class="veloce-format-left">
+              <span class="veloce-res-badge">720p HD</span>
+              <div class="veloce-format-details">
+                <span class="veloce-format-name">Lightweight HD (Balanced)</span>
+                <span class="veloce-format-sub">Fast stream download</span>
+              </div>
+            </div>
+            <button class="veloce-dl-pill" id="btn-dl-720">Download</button>
+          </div>
+
+          <div class="veloce-format-row">
+            <div class="veloce-format-left">
+              <span class="veloce-res-badge">1080p</span>
+              <div class="veloce-format-details">
+                <span class="veloce-format-name">Full High Definition</span>
+                <span class="veloce-format-sub">Highest visual fidelity</span>
+              </div>
+            </div>
+            <button class="veloce-dl-pill" id="btn-dl-1080">Download</button>
           </div>
         </div>
       </div>
@@ -59,183 +148,118 @@
     const tabAudio = backdrop.querySelector("#veloce-tab-audio");
     const container = backdrop.querySelector("#veloce-formats-container");
 
-    let videoFormats = [];
-    let audioFormats = [];
-
     function renderVideo() {
       tabVideo.className = "veloce-tab active";
       tabAudio.className = "veloce-tab";
-
-      if (videoFormats.length === 0) {
-        container.innerHTML = `
-          <div class="veloce-format-row">
-            <div class="veloce-format-left">
-              <span class="veloce-res-badge lightweight">720p HD</span>
-              <div class="veloce-format-details">
-                <span class="veloce-format-name">Lightweight HD (Balanced)</span>
-                <span class="veloce-format-sub">Fast stream download</span>
-              </div>
-            </div>
-            <button class="veloce-dl-pill" id="btn-dl-default">Download MP4</button>
-          </div>
-        `;
-        container.querySelector("#btn-dl-default").addEventListener("click", () => {
-          startDownload(mediaUrl, "720p", false);
-        });
-        return;
-      }
-
-      container.innerHTML = videoFormats.map((f, idx) => `
+      container.innerHTML = `
         <div class="veloce-format-row">
           <div class="veloce-format-left">
-            <span class="veloce-res-badge ${f.is_lightweight ? 'lightweight' : ''}">${f.resolution}</span>
+            <span class="veloce-res-badge">720p HD</span>
             <div class="veloce-format-details">
-              <span class="veloce-format-name">${f.tag || f.resolution} (${f.ext ? f.ext.toUpperCase() : 'MP4'})</span>
-              <span class="veloce-format-sub">Est. Size: ${formatBytes(f.filesize)}</span>
+              <span class="veloce-format-name">Lightweight HD (Balanced)</span>
+              <span class="veloce-format-sub">Recommended format</span>
             </div>
           </div>
-          <button class="veloce-dl-pill" data-idx="${idx}">Download</button>
+          <button class="veloce-dl-pill" id="btn-dl-720">Download</button>
         </div>
-      `).join("");
+        <div class="veloce-format-row">
+          <div class="veloce-format-left">
+            <span class="veloce-res-badge">1080p</span>
+            <div class="veloce-format-details">
+              <span class="veloce-format-name">Full High Definition</span>
+              <span class="veloce-format-sub">Best resolution</span>
+            </div>
+          </div>
+          <button class="veloce-dl-pill" id="btn-dl-1080">Download</button>
+        </div>
+      `;
 
-      container.querySelectorAll(".veloce-dl-pill").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const idx = parseInt(btn.dataset.idx);
-          const fmt = videoFormats[idx];
-          startDownload(mediaUrl, fmt.format_id || fmt.resolution, false);
-        });
+      container.querySelector("#btn-dl-720").addEventListener("click", () => {
+        executeDownload(mediaUrl, "720p", false);
+      });
+      container.querySelector("#btn-dl-1080").addEventListener("click", () => {
+        executeDownload(mediaUrl, "1080p", false);
       });
     }
 
     function renderAudio() {
       tabAudio.className = "veloce-tab active";
       tabVideo.className = "veloce-tab";
-
       container.innerHTML = `
         <div class="veloce-format-row">
           <div class="veloce-format-left">
-            <span class="veloce-res-badge lightweight">MP3</span>
+            <span class="veloce-res-badge">MP3</span>
             <div class="veloce-format-details">
-              <span class="veloce-format-name">High Quality Audio (192 kbps)</span>
-              <span class="veloce-format-sub">Lightweight audio extraction</span>
+              <span class="veloce-format-name">Extracted Audio Track</span>
+              <span class="veloce-format-sub">Universal audio file</span>
             </div>
           </div>
           <button class="veloce-dl-pill" id="btn-dl-mp3">Extract MP3</button>
         </div>
-        <div class="veloce-format-row">
-          <div class="veloce-format-left">
-            <span class="veloce-res-badge">M4A</span>
-            <div class="veloce-format-details">
-              <span class="veloce-format-name">Lossless AAC Stream</span>
-              <span class="veloce-format-sub">Fast native container</span>
-            </div>
-          </div>
-          <button class="veloce-dl-pill" id="btn-dl-m4a">Download M4A</button>
-        </div>
       `;
 
       container.querySelector("#btn-dl-mp3").addEventListener("click", () => {
-        startDownload(mediaUrl, "bestaudio", true, "mp3");
-      });
-      container.querySelector("#btn-dl-m4a").addEventListener("click", () => {
-        startDownload(mediaUrl, "bestaudio", true, "m4a");
+        executeDownload(mediaUrl, "bestaudio", true, "mp3");
       });
     }
 
     tabVideo.addEventListener("click", renderVideo);
     tabAudio.addEventListener("click", renderAudio);
 
-    function startDownload(targetUrl, formatId, extractAudio = false, audioFmt = "mp3") {
+    container.querySelector("#btn-dl-720").addEventListener("click", () => {
+      executeDownload(mediaUrl, "720p", false);
+    });
+    container.querySelector("#btn-dl-1080").addEventListener("click", () => {
+      executeDownload(mediaUrl, "1080p", false);
+    });
+
+    function executeDownload(url, format, extractAudio = false, audioFmt = "mp3") {
       backdrop.remove();
       chrome.runtime.sendMessage({
         type: "DOWNLOAD_STREAM",
         payload: {
-          url: targetUrl,
-          title: pageTitle.replace(/[^a-zA-Z0-9_\-\.]/g, "_"),
-          format_id: formatId,
+          url: url,
+          title: pageTitle,
+          format_id: format,
           extract_audio: extractAudio,
           audio_format: audioFmt
         }
       });
     }
 
-    // Probe the media using Veloce Engine
-    chrome.runtime.sendMessage({
-      type: "PROBE_MEDIA",
-      url: mediaUrl
-    }, (resp) => {
-      if (resp && resp.result) {
-        videoFormats = resp.result.video_formats || [];
-        audioFormats = resp.result.audio_formats || [];
+    // Try probing formats from engine if online
+    chrome.runtime.sendMessage({ type: "PROBE_MEDIA", url: mediaUrl }, (resp) => {
+      if (resp && resp.result && resp.result.video_formats && resp.result.video_formats.length > 0) {
+        container.innerHTML = resp.result.video_formats.map(f => `
+          <div class="veloce-format-row">
+            <div class="veloce-format-left">
+              <span class="veloce-res-badge">${f.resolution}</span>
+              <div class="veloce-format-details">
+                <span class="veloce-format-name">${f.resolution} Video</span>
+                <span class="veloce-format-sub">${f.tag || 'Standard stream'}</span>
+              </div>
+            </div>
+            <button class="veloce-dl-pill" data-fmt="${f.format_id}">Download</button>
+          </div>
+        `).join("");
+
+        container.querySelectorAll(".veloce-dl-pill").forEach(btn => {
+          btn.addEventListener("click", () => {
+            executeDownload(mediaUrl, btn.dataset.fmt, false);
+          });
+        });
       }
-      renderVideo();
     });
   }
 
-  function createFloatingButton(mediaElement) {
-    if (mediaElement.dataset.veloceHooked) return;
-    mediaElement.dataset.veloceHooked = "true";
-
-    const container = document.createElement("div");
-    container.className = VELOCE_CLASS;
-    container.innerHTML = `
-      <div class="veloce-sniff-btn">
-        <svg class="veloce-sniff-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z"/>
-        </svg>
-        <span>Download Media</span>
-        <span class="veloce-badge">VELOCE</span>
-      </div>
-    `;
-
-    function updatePosition() {
-      const rect = mediaElement.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0 || window.getComputedStyle(mediaElement).display === "none") {
-        container.style.display = "none";
-        return;
-      }
-      container.style.display = "flex";
-      container.style.top = `${Math.max(10, window.scrollY + rect.top + 12)}px`;
-      container.style.left = `${Math.max(10, window.scrollX + rect.right - 185)}px`;
-    }
-
-    document.body.appendChild(container);
-
-    mediaElement.addEventListener("play", updatePosition);
-    mediaElement.addEventListener("loadedmetadata", updatePosition);
-    mediaElement.addEventListener("mouseenter", updatePosition);
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition);
-
-    container.addEventListener("click", (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-
-      let mediaUrl = mediaElement.currentSrc || mediaElement.src;
-      if (!mediaUrl) {
-        const source = mediaElement.querySelector("source");
-        if (source) mediaUrl = source.src;
-      }
-
-      // If still empty or blob, check if the page URL itself can be probed by yt-dlp
-      if (!mediaUrl || mediaUrl.startsWith("blob:")) {
-        mediaUrl = window.location.href;
-      }
-
-      const pageTitle = document.title || "Video";
-      openQualityModal(mediaUrl, pageTitle);
-    });
-
-    updatePosition();
+  function scanDOM() {
+    const videos = document.querySelectorAll("video");
+    videos.forEach(attachDownloadBadge);
   }
 
-  function scanMedia() {
-    const mediaElements = document.querySelectorAll("video, audio");
-    mediaElements.forEach(createFloatingButton);
-  }
-
-  const observer = new MutationObserver(() => scanMedia());
+  // Observe navigation and dynamic player loads
+  const observer = new MutationObserver(() => scanDOM());
   observer.observe(document.body, { childList: true, subtree: true });
 
-  scanMedia();
+  scanDOM();
 })();

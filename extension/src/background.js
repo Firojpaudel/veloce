@@ -1,17 +1,14 @@
 /**
- * VELOCE BACKGROUND SERVICE WORKER (Manifest V3)
- * - Intercepts regular downloads & reroutes to multi-stream engine.
- * - Deep Network Sniffer: Intercepts HLS (.m3u8), DASH (.mpd), and MSE video/audio streams.
- * - Maintains active tab stream inventory.
+ * VELOCE BACKGROUND SERVICE WORKER
+ * - Intercepts downloads & forwards to engine if available, or falls back to native download.
+ * - Deep Media Network Sniffer (HLS, DASH, direct MP4).
  */
 
 const ENGINE_API = "http://127.0.0.1:9229/api";
 let interceptEnabled = true;
 
-// Tab stream cache: tabId -> Map(streamUrl -> metadata)
 const tabStreams = new Map();
 
-// Load settings
 chrome.storage.local.get(["interceptEnabled"], (res) => {
   if (res.interceptEnabled !== undefined) {
     interceptEnabled = res.interceptEnabled;
@@ -24,7 +21,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-// Deep Media Network Sniffer
+// Media Network Sniffer
 chrome.webRequest.onHeadersReceived.addListener(
   (details) => {
     if (details.tabId < 0) return;
@@ -32,7 +29,6 @@ chrome.webRequest.onHeadersReceived.addListener(
     const url = details.url;
     const lowerUrl = url.toLowerCase();
 
-    // Check Content-Type headers
     let contentType = "";
     if (details.responseHeaders) {
       const ctHeader = details.responseHeaders.find(h => h.name.toLowerCase() === "content-type");
@@ -42,30 +38,17 @@ chrome.webRequest.onHeadersReceived.addListener(
     const isHls = lowerUrl.includes(".m3u8") || contentType.includes("application/vnd.apple.mpegurl") || contentType.includes("application/x-mpegurl");
     const isDash = lowerUrl.includes(".mpd") || contentType.includes("application/dash+xml");
     const isDirectMedia = contentType.startsWith("video/") || contentType.startsWith("audio/") ||
-                          lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".m4s") || lowerUrl.endsWith(".webm") || lowerUrl.endsWith(".mp3");
+                          lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".webm") || lowerUrl.endsWith(".m4a");
 
     if (isHls || isDash || isDirectMedia) {
       if (!tabStreams.has(details.tabId)) {
         tabStreams.set(details.tabId, new Map());
       }
-      const streamMap = tabStreams.get(details.tabId);
-      const streamType = isHls ? "HLS (.m3u8)" : (isDash ? "MPEG-DASH (.mpd)" : "Direct Media");
-
-      streamMap.set(url, {
+      tabStreams.get(details.tabId).set(url, {
         url: url,
-        type: streamType,
+        type: isHls ? "HLS" : (isDash ? "DASH" : "Direct"),
         contentType: contentType,
         timestamp: Date.now()
-      });
-
-      // Update extension badge to show number of detected media streams
-      chrome.action.setBadgeText({
-        tabId: details.tabId,
-        text: streamMap.size.toString()
-      });
-      chrome.action.setBadgeBackgroundColor({
-        tabId: details.tabId,
-        color: "#38BDF8"
       });
     }
   },
@@ -73,11 +56,9 @@ chrome.webRequest.onHeadersReceived.addListener(
   ["responseHeaders"]
 );
 
-// Clear tab stream cache when tab reloads or closes
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
     tabStreams.delete(tabId);
-    chrome.action.setBadgeText({ tabId, text: "" });
   }
 });
 
@@ -85,7 +66,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   tabStreams.delete(tabId);
 });
 
-// Intercept browser regular downloads
+// Intercept browser regular downloads only if engine is alive
 chrome.downloads.onCreated.addListener(async (downloadItem) => {
   if (!interceptEnabled) return;
 
@@ -94,26 +75,71 @@ chrome.downloads.onCreated.addListener(async (downloadItem) => {
     return;
   }
 
+  // Check if engine is alive
   try {
-    const statusResp = await fetch(`${ENGINE_API}/status`, { signal: AbortSignal.timeout(1000) });
+    const statusResp = await fetch(`${ENGINE_API}/status`, { signal: AbortSignal.timeout(600) });
     if (!statusResp.ok) return;
+
+    // Engine is alive, cancel native single-stream download and pass to Veloce
+    chrome.downloads.cancel(downloadItem.id, () => {
+      chrome.downloads.erase({ id: downloadItem.id });
+    });
+    sendToEngine(url, downloadItem.filename);
   } catch (err) {
-    return;
+    // Engine offline: do nothing, allow Chrome native download to proceed normally
   }
-
-  chrome.downloads.cancel(downloadItem.id, () => {
-    chrome.downloads.erase({ id: downloadItem.id });
-  });
-
-  sendToEngine(url, downloadItem.filename);
 });
 
-// Message hub
+// Message Hub
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "GET_TAB_STREAMS") {
     const tabId = sender.tab ? sender.tab.id : message.tabId;
     const streams = tabId && tabStreams.has(tabId) ? Array.from(tabStreams.get(tabId).values()) : [];
     sendResponse({ streams });
+    return true;
+  }
+
+  if (message.type === "DOWNLOAD_URL" || message.type === "DOWNLOAD_STREAM") {
+    const targetUrl = message.url || (message.payload ? message.payload.url : "");
+    const filename = message.filename || (message.payload ? `${message.payload.title || 'video'}.mp4` : "download.mp4");
+
+    // Try engine first
+    fetch(`${ENGINE_API}/status`, { signal: AbortSignal.timeout(600) })
+      .then(res => res.json())
+      .then(() => {
+        // Engine online
+        if (message.type === "DOWNLOAD_STREAM") {
+          return fetch(`${ENGINE_API}/media/download`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(message.payload)
+          });
+        } else {
+          return sendToEngine(targetUrl, filename);
+        }
+      })
+      .then(res => sendResponse({ success: true }))
+      .catch(() => {
+        // Fallback: Engine offline, download directly via Chrome API
+        if (targetUrl && !targetUrl.startsWith("blob:")) {
+          chrome.downloads.download({
+            url: targetUrl,
+            filename: filename,
+            saveAs: false
+          }, (dlId) => {
+            sendResponse({ success: !!dlId, direct: true });
+          });
+        } else {
+          // If blob on YouTube/video site, open tab to prompt user or trigger media download
+          chrome.downloads.download({
+            url: sender.tab ? sender.tab.url : targetUrl,
+            filename: filename,
+            saveAs: true
+          }, (dlId) => {
+            sendResponse({ success: !!dlId, direct: true });
+          });
+        }
+      });
     return true;
   }
 
@@ -128,59 +154,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch(err => sendResponse({ success: false, error: err.message }));
     return true;
   }
-
-  if (message.type === "DOWNLOAD_STREAM") {
-    fetch(`${ENGINE_API}/media/download`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(message.payload)
-    })
-      .then(res => res.json())
-      .then(data => {
-        chrome.notifications.create({
-          type: "basic",
-          iconUrl: "../icons/icon48.png",
-          title: "Veloce Media Capture",
-          message: `Accelerating ${message.payload.extract_audio ? 'Audio (.mp3)' : 'Lightweight Video'}: ${message.payload.title}`
-        });
-        sendResponse(data);
-      })
-      .catch(err => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-
-  if (message.type === "DOWNLOAD_URL") {
-    sendToEngine(message.url, message.filename, message.headers)
-      .then((res) => sendResponse({ success: true, res }))
-      .catch((err) => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
 });
 
 async function sendToEngine(url, suggestedFilename = "", headers = {}) {
-  try {
-    const payload = {
-      url: url,
-      connections: 16,
-      headers: { "User-Agent": navigator.userAgent, ...headers }
-    };
-    const resp = await fetch(`${ENGINE_API}/download`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const result = await resp.json();
-    if (result.success) {
-      chrome.notifications.create({
-        type: "basic",
-        iconUrl: "../icons/icon48.png",
-        title: "Veloce Multi-Stream Download",
-        message: `Accelerating with 16 dynamic threads: ${suggestedFilename || url.substring(0, 45)}`
-      });
-    }
-    return result;
-  } catch (err) {
-    console.error("Veloce Bridge Error:", err);
-    throw err;
-  }
+  const payload = {
+    url: url,
+    connections: 16,
+    headers: { "User-Agent": navigator.userAgent, ...headers }
+  };
+  const resp = await fetch(`${ENGINE_API}/download`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  return await resp.json();
 }
