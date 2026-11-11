@@ -7,6 +7,7 @@ HLS/DASH manifest handling, and audio extraction via yt-dlp & ffmpeg.
 import os
 import sys
 import json
+import shutil
 import logging
 import subprocess
 from typing import Dict, List, Optional
@@ -214,44 +215,103 @@ class MediaEngine:
             }
 
     @staticmethod
+    def _locate_ffmpeg() -> bool:
+        """Finds ffmpeg in PATH, next to binary executable, or ~/.veloce/bin."""
+        if shutil.which("ffmpeg"):
+            return True
+        exe_dir = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__))
+        candidate = os.path.join(exe_dir, "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
+        if os.path.exists(candidate):
+            os.environ["PATH"] = exe_dir + os.pathsep + os.environ.get("PATH", "")
+            return True
+        veloce_bin = os.path.expanduser("~/.veloce/bin")
+        candidate2 = os.path.join(veloce_bin, "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
+        if os.path.exists(candidate2):
+            os.environ["PATH"] = veloce_bin + os.pathsep + os.environ.get("PATH", "")
+            return True
+        return False
+
+    @staticmethod
     def download_stream(
         url: str,
         output_dir: str,
         filename_prefix: str,
         format_id: str = "bestvideo[height<=720]+bestaudio/best[height<=720]",
         extract_audio: bool = False,
-        audio_format: str = "mp3"
+        audio_format: str = "mp3",
+        headers: Optional[Dict[str, str]] = None
     ) -> str:
         """
-        Downloads the media stream using ffmpeg muxing and lightweight compression.
+        Downloads the media stream using ffmpeg muxing or progressive single-file fallback.
+        Multi-threaded fragment downloads (16 streams) enabled for fast HLS/DASH throughput.
         """
         os.makedirs(output_dir, exist_ok=True)
         out_template = os.path.join(output_dir, f"{filename_prefix}.%(ext)s")
+        has_ffmpeg = MediaEngine._locate_ffmpeg()
+
+        # Prepare HTTP headers (Referer/User-Agent crucial for third-party streaming sites)
+        http_headers = {}
+        if headers:
+            for k, v in headers.items():
+                if k.lower() in ["referer", "user-agent", "origin"]:
+                    http_headers[k] = v
 
         # 1. Try bundled yt_dlp module first
         if yt_dlp is not None:
             try:
+                active_format = format_id if has_ffmpeg else "best[ext=mp4]/best"
                 ydl_opts = {
                     "outtmpl": out_template,
-                    "format": format_id,
+                    "format": active_format,
+                    "concurrent_fragment_downloads": 16,
+                    "buffersize": 1024 * 1024,
                     "quiet": False,
                     "no_warnings": True,
                 }
+                if http_headers:
+                    ydl_opts["http_headers"] = http_headers
+
                 if extract_audio:
                     ydl_opts["format"] = "bestaudio/best"
-                    ydl_opts["postprocessors"] = [{
-                        "key": "FFmpegExtractAudio",
-                        "preferredcodec": audio_format,
-                        "preferredquality": "192",
-                    }]
-                else:
+                    if has_ffmpeg:
+                        ydl_opts["postprocessors"] = [{
+                            "key": "FFmpegExtractAudio",
+                            "preferredcodec": audio_format,
+                            "preferredquality": "192",
+                        }]
+                elif has_ffmpeg:
                     ydl_opts["merge_output_format"] = "mp4"
 
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.download([url])
+                
+                # Find final file
+                for ext in ["mp4", "m4a", "mp3", "webm", "mkv"]:
+                    f = os.path.join(output_dir, f"{filename_prefix}.{ext}")
+                    if os.path.exists(f):
+                        return f
                 return out_template
             except Exception as e:
-                logger.warning(f"yt_dlp in-process download failed: {e}, falling back to CLI")
+                logger.warning(f"yt_dlp primary stream download failed ({e}), attempting fallback...")
+                try:
+                    fallback_opts = {
+                        "outtmpl": out_template,
+                        "format": "bestaudio/best" if extract_audio else "best[ext=mp4]/best",
+                        "concurrent_fragment_downloads": 16,
+                        "quiet": False,
+                        "no_warnings": True,
+                    }
+                    if http_headers:
+                        fallback_opts["http_headers"] = http_headers
+                    with yt_dlp.YoutubeDL(fallback_opts) as ydl:
+                        ydl.download([url])
+                    for ext in ["mp4", "m4a", "mp3", "webm", "mkv"]:
+                        f = os.path.join(output_dir, f"{filename_prefix}.{ext}")
+                        if os.path.exists(f):
+                            return f
+                    return out_template
+                except Exception as fallback_err:
+                    logger.warning(f"yt_dlp fallback failed: {fallback_err}, attempting CLI...")
 
         # 2. Fallback to CLI binary
         cmd = [
@@ -259,23 +319,38 @@ class MediaEngine:
             "--no-playlist",
             "--no-warnings",
             "--newline",
+            "--concurrent-fragments", "16",
             "-o", out_template,
         ]
 
+        if http_headers:
+            for k, v in http_headers.items():
+                cmd.extend(["--add-header", f"{k}:{v}"])
+
         if extract_audio:
-            cmd.extend([
-                "-x",
-                "--audio-format", audio_format,
-                "--audio-quality", "192K",
-            ])
+            if has_ffmpeg:
+                cmd.extend([
+                    "-x",
+                    "--audio-format", audio_format,
+                    "--audio-quality", "192K",
+                ])
+            else:
+                cmd.extend(["-f", "bestaudio/best"])
         else:
-            # Optimal lightweight video selection with audio merge
-            cmd.extend([
-                "-f", format_id,
-                "--merge-output-format", "mp4"
-            ])
+            if has_ffmpeg:
+                cmd.extend([
+                    "-f", format_id,
+                    "--merge-output-format", "mp4"
+                ])
+            else:
+                cmd.extend(["-f", "best[ext=mp4]/best"])
 
         cmd.append(url)
         logger.info(f"Executing stream download: {' '.join(cmd)}")
         res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+        for ext in ["mp4", "m4a", "mp3", "webm", "mkv"]:
+            f = os.path.join(output_dir, f"{filename_prefix}.{ext}")
+            if os.path.exists(f):
+                return f
         return out_template

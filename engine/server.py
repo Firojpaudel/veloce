@@ -5,11 +5,13 @@ Uses standard library components for zero-dependency execution.
 """
 
 import os
+import sys
 import json
 import uuid
 import time
 import logging
 import threading
+import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from typing import Dict
@@ -19,6 +21,36 @@ from .media import MediaEngine
 
 logger = logging.getLogger("VeloceServer")
 DEFAULT_DOWNLOAD_DIR = os.path.expanduser("~/Downloads")
+
+
+def reveal_in_explorer(file_path: str) -> bool:
+    """Opens File Explorer / Finder / file manager and selects or opens the file/folder."""
+    if not file_path:
+        file_path = DEFAULT_DOWNLOAD_DIR
+
+    norm_path = os.path.normpath(file_path)
+    if not os.path.exists(norm_path):
+        parent = os.path.dirname(norm_path)
+        norm_path = parent if (parent and os.path.exists(parent)) else DEFAULT_DOWNLOAD_DIR
+
+    try:
+        if sys.platform == "win32":
+            if os.path.isfile(norm_path):
+                subprocess.Popen(f'explorer /select,"{norm_path}"')
+            else:
+                subprocess.Popen(f'explorer "{norm_path}"')
+        elif sys.platform == "darwin":
+            if os.path.isfile(norm_path):
+                subprocess.Popen(["open", "-R", norm_path])
+            else:
+                subprocess.Popen(["open", norm_path])
+        else:
+            target = os.path.dirname(norm_path) if os.path.isfile(norm_path) else norm_path
+            subprocess.Popen(["xdg-open", target])
+        return True
+    except Exception as e:
+        logger.error(f"Failed to open explorer for {norm_path}: {e}")
+        return False
 
 class TaskStore:
     def __init__(self):
@@ -36,6 +68,7 @@ class TaskStore:
                 self.task_metadata[task_id] = {
                     "id": task_id,
                     "url": url,
+                    "file_path": task.output_path,
                     **info
                 }
 
@@ -68,7 +101,22 @@ class TaskStore:
 
     def list_tasks(self) -> list:
         with self.lock:
+            # Sync with physical filesystem: if user deleted file, reflect it
+            for tid, meta in self.task_metadata.items():
+                fpath = meta.get("file_path")
+                if meta.get("status") == "COMPLETED" and fpath:
+                    if not os.path.exists(fpath):
+                        meta["status"] = "FILE_REMOVED"
+                        meta["file_missing"] = True
             return list(self.task_metadata.values())
+
+    def clear_completed(self) -> int:
+        with self.lock:
+            to_remove = [tid for tid, m in self.task_metadata.items() if m.get("status") in ["COMPLETED", "FILE_REMOVED", "ERROR"]]
+            for tid in to_remove:
+                self.tasks.pop(tid, None)
+                self.task_metadata.pop(tid, None)
+            return len(to_remove)
 
     def pause_task(self, task_id: str) -> bool:
         with self.lock:
@@ -167,6 +215,16 @@ class RequestHandler(BaseHTTPRequestHandler):
             extract_audio = bool(payload.get("extract_audio", False))
             audio_format = payload.get("audio_format", "mp3")
             title = payload.get("title", f"media_{task_id}")
+            headers = payload.get("headers", {})
+
+            # Ensure video downloads ALWAYS merge an audio track so sound is never missing
+            if not extract_audio:
+                if format_id in ["720p", "720"]:
+                    format_id = "bestvideo[height<=720]+bestaudio/best[height<=720]/best"
+                elif format_id in ["1080p", "1080"]:
+                    format_id = "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best"
+                elif format_id and "+" not in format_id and not format_id.startswith("best"):
+                    format_id = f"{format_id}+bestaudio/best"
 
             # Register in task store
             with STORE.lock:
@@ -185,18 +243,21 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             def run_stream():
                 try:
-                    MediaEngine.download_stream(
+                    final_path = MediaEngine.download_stream(
                         url=url,
                         output_dir=out_dir,
                         filename_prefix=title,
                         format_id=format_id,
                         extract_audio=extract_audio,
-                        audio_format=audio_format
+                        audio_format=audio_format,
+                        headers=headers
                     )
                     with STORE.lock:
                         if task_id in STORE.task_metadata:
                             STORE.task_metadata[task_id]["status"] = "COMPLETED"
                             STORE.task_metadata[task_id]["percent"] = 100.0
+                            STORE.task_metadata[task_id]["file_path"] = final_path
+                            STORE.task_metadata[task_id]["filename"] = os.path.basename(final_path)
                 except Exception as e:
                     logger.error(f"Stream download failed: {e}")
                     with STORE.lock:
@@ -238,6 +299,27 @@ class RequestHandler(BaseHTTPRequestHandler):
             task_id = parts[3]
             success = STORE.cancel_task(task_id)
             self._send_json(200 if success else 404, {"success": success})
+            return
+
+        if path.startswith("/api/tasks/") and path.endswith("/open"):
+            parts = path.split("/")
+            task_id = parts[3]
+            with STORE.lock:
+                meta = STORE.task_metadata.get(task_id, {})
+                fpath = meta.get("file_path") or os.path.join(DEFAULT_DOWNLOAD_DIR, meta.get("filename", ""))
+            success = reveal_in_explorer(fpath)
+            self._send_json(200, {"success": success})
+            return
+
+        if path == "/api/tasks/clear-completed":
+            count = STORE.clear_completed()
+            self._send_json(200, {"success": True, "cleared": count})
+            return
+
+        if path == "/api/open-folder":
+            folder = payload.get("path", DEFAULT_DOWNLOAD_DIR)
+            success = reveal_in_explorer(folder)
+            self._send_json(200, {"success": success})
             return
 
         self._send_json(404, {"error": "Endpoint not found"})

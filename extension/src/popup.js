@@ -109,19 +109,26 @@ function renderEngineTasks(tasks) {
     const item = document.createElement("div");
     item.className = "task-item";
     const isDone = task.status === "COMPLETED";
+    const isRemoved = task.status === "FILE_REMOVED";
+
+    let rateText = `${formatBytes(task.speed || 0)}/s`;
+    if (isDone) rateText = "Done";
+    if (isRemoved) rateText = "Removed from disk";
+    if (task.status === "ERROR") rateText = "Error";
 
     item.innerHTML = `
       <div class="task-top">
-        <span class="task-title" title="${task.filename}">${task.filename}</span>
-        <span class="task-rate">${isDone ? "Done" : `${formatBytes(task.speed || 0)}/s`}</span>
+        <span class="task-title ${isDone ? 'clickable' : ''}" title="${task.filename}" ${isDone ? `onclick="window.openTask('${task.id}')"` : ""}>${task.filename}</span>
+        <span class="task-rate ${isRemoved ? 'deleted' : ''}">${rateText}</span>
       </div>
       <div class="progress-track">
-        <div class="progress-bar" style="width: ${task.percent || 0}%;"></div>
+        <div class="progress-bar ${isRemoved ? 'dimmed' : ''}" style="width: ${task.percent || 0}%;"></div>
       </div>
       <div class="task-bottom">
         <span>${formatBytes(task.downloaded || 0)} / ${formatBytes(task.total_size || 0)} (${task.percent || 0}%)</span>
         <div class="task-ctrls">
-          ${!isDone ? `<button class="btn-ctrl" onclick="window.pauseTask('${task.id}')">Pause</button>` : ""}
+          ${isDone ? `<button class="btn-ctrl action" onclick="window.openTask('${task.id}')" title="Reveal in File Explorer">Folder</button>` : ""}
+          ${(!isDone && !isRemoved) ? `<button class="btn-ctrl" onclick="window.pauseTask('${task.id}')">Pause</button>` : ""}
           <button class="btn-ctrl danger" onclick="window.cancelTask('${task.id}')">Remove</button>
         </div>
       </div>
@@ -184,6 +191,22 @@ function showEmpty() {
   `;
 }
 
+window.openTask = async function(id) {
+  try {
+    await fetch(`${ENGINE_API}/tasks/${id}/open`, { method: "POST" });
+  } catch (e) {}
+};
+
+window.openDownloadsFolder = async function() {
+  try {
+    if (engineOnline) {
+      await fetch(`${ENGINE_API}/open-folder`, { method: "POST" });
+    } else {
+      chrome.downloads.showDefaultFolder();
+    }
+  } catch (e) {}
+};
+
 window.pauseTask = async function(id) {
   try {
     await fetch(`${ENGINE_API}/tasks/${id}/pause`, { method: "POST" });
@@ -215,16 +238,15 @@ urlInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") btnAdd.click();
 });
 
+const btnOpenFolder = document.getElementById("btn-open-folder");
+if (btnOpenFolder) {
+  btnOpenFolder.addEventListener("click", window.openDownloadsFolder);
+}
+
 btnClearDone.addEventListener("click", async () => {
   if (engineOnline) {
     try {
-      const res = await fetch(`${ENGINE_API}/tasks`);
-      const data = await res.json();
-      for (const t of (data.tasks || [])) {
-        if (t.status === "COMPLETED") {
-          await fetch(`${ENGINE_API}/tasks/${t.id}/cancel`, { method: "POST" });
-        }
-      }
+      await fetch(`${ENGINE_API}/tasks/clear-completed`, { method: "POST" });
     } catch (e) {}
   }
   chrome.downloads.erase({ state: "complete" });

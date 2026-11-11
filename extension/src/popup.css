@@ -435,6 +435,39 @@ body {
   background: #fff1f2;
 }
 
+.btn-ctrl.action {
+  color: var(--color-blue);
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.btn-ctrl.action:hover {
+  background: #dbeafe;
+  border-color: var(--color-blue);
+}
+
+.task-title.clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.15s ease, color 0.15s ease;
+}
+
+.task-title.clickable:hover {
+  color: var(--color-blue);
+  text-decoration-color: var(--color-blue);
+}
+
+.task-rate.deleted {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.progress-bar.dimmed {
+  background: #94a3b8;
+  opacity: 0.5;
+}
+
 /* ===================================================================
  * FOOTER
  * =================================================================== */

@@ -78,13 +78,33 @@
         if (srcEl) mediaUrl = srcEl.src;
       }
 
-      // If blob on YouTube or streaming site, use full page URL
-      if (!mediaUrl || mediaUrl.startsWith("blob:")) {
-        mediaUrl = window.location.href;
+      const cleanTitle = (document.title || "video").replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+
+      if (isYouTube()) {
+        openQualityModal(window.location.href, cleanTitle);
+        return;
       }
 
-      const cleanTitle = (document.title || "video").replace(/[^a-zA-Z0-9_\-\.]/g, "_");
-      openQualityModal(mediaUrl, cleanTitle);
+      // On third-party streaming sites (kisskh, anime, movie sites):
+      // The player uses blob: MSE. Query the network sniffer for the actual .m3u8 or video stream!
+      if (!mediaUrl || mediaUrl.startsWith("blob:")) {
+        chrome.runtime.sendMessage({ type: "GET_TAB_STREAMS" }, (resp) => {
+          let streamUrl = window.location.href;
+          if (resp && resp.streams && resp.streams.length > 0) {
+            // Find highest priority: HLS (.m3u8), DASH (.mpd), or direct media
+            const hls = resp.streams.find(s => s.type === "HLS");
+            const dash = resp.streams.find(s => s.type === "DASH");
+            const direct = resp.streams.find(s => s.type === "Direct");
+            const best = hls || dash || direct || resp.streams[resp.streams.length - 1];
+            if (best && best.url) {
+              streamUrl = best.url;
+            }
+          }
+          openQualityModal(streamUrl, cleanTitle);
+        });
+      } else {
+        openQualityModal(mediaUrl, cleanTitle);
+      }
     });
   }
 
@@ -223,7 +243,10 @@
           title: pageTitle,
           format_id: format,
           extract_audio: extractAudio,
-          audio_format: audioFmt
+          audio_format: audioFmt,
+          headers: {
+            "Referer": window.location.href
+          }
         }
       }, (resp) => {
         if (resp && resp.reason === "ENGINE_REQUIRED") {
