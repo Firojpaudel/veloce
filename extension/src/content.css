@@ -1,0 +1,73 @@
+/* ===================================================================
+ * VELOCE FLOATING MEDIA SNIFFER OVERLAY
+ * Ultra-sleek frosted-glass floating action button for video & audio
+ * =================================================================== */
+
+.veloce-floating-panel {
+  position: absolute;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  user-select: none;
+  animation: veloceSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+.veloce-sniff-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(14, 20, 36, 0.88);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 12px rgba(56, 189, 248, 0.2);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.veloce-sniff-btn:hover {
+  background: rgba(21, 31, 54, 0.95);
+  border-color: #38bdf8;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5), 0 0 16px rgba(56, 189, 248, 0.4);
+}
+
+.veloce-sniff-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.veloce-sniff-icon {
+  width: 14px;
+  height: 14px;
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.veloce-badge {
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  color: #ffffff;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+@keyframes veloceSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
