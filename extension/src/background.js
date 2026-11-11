@@ -142,7 +142,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (targetUrl.startsWith("http://") || targetUrl.startsWith("https://")) {
           chrome.downloads.download({
             url: targetUrl,
-            filename: filename,
+            filename: `veloce/${filename}`,
             saveAs: false
           }, (dlId) => {
             sendResponse({ success: !!dlId, direct: true });

@@ -2,9 +2,15 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "checkJs": false,
-    "lib": ["DOM", "ES2022"]
+    "moduleResolution": "node",
+    "types": ["chrome"],
+    "checkJs": false
   },
-  "include": ["src/**/*"]
+  "include": [
+    "extension/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
 

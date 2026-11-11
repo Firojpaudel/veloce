@@ -20,7 +20,8 @@ from .segmenter import DownloadTask
 from .media import MediaEngine
 
 logger = logging.getLogger("VeloceServer")
-DEFAULT_DOWNLOAD_DIR = os.path.expanduser("~/Downloads")
+DEFAULT_DOWNLOAD_DIR = os.path.join(os.path.expanduser("~/Downloads"), "veloce")
+os.makedirs(DEFAULT_DOWNLOAD_DIR, exist_ok=True)
 
 
 def reveal_in_explorer(file_path: str) -> bool:

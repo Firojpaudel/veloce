@@ -42,7 +42,8 @@ def print_progress(data: dict):
 
 def run_download(url: str, output_path: str = None, connections: int = 16):
     if not output_path:
-        output_path = os.path.expanduser("~/Downloads")
+        output_path = os.path.join(os.path.expanduser("~/Downloads"), "veloce")
+    os.makedirs(output_path, exist_ok=True)
 
     print(f"\n[INFO] Target: {url}")
     print(f"[INFO] Concurrent Connections: {connections}")

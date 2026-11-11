@@ -58,11 +58,7 @@
     badge.className = BADGE_CLASS;
     badge.title = "Download with Veloce";
     badge.innerHTML = `
-      <svg class="veloce-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-        <polyline points="7 10 12 15 17 10"></polyline>
-        <line x1="12" y1="15" x2="12" y2="3"></line>
-      </svg>
+      <img src="${chrome.runtime.getURL('icons/icon16.png')}" alt="" width="14" height="14" style="border-radius: 3px; vertical-align: middle;" />
       <span>Download</span>
     `;
 
@@ -118,9 +114,7 @@
       <div class="veloce-modal-dialog">
         <div class="veloce-dialog-header">
           <div class="veloce-dialog-title-group">
-            <svg class="veloce-badge-icon" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5">
-              <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
-            </svg>
+            <img src="${chrome.runtime.getURL('icons/icon32.png')}" alt="Veloce" width="20" height="20" style="border-radius: 4px; flex-shrink: 0;" />
             <span class="veloce-dialog-title">${pageTitle}</span>
           </div>
           <button class="veloce-close-btn" id="veloce-close-modal">&times;</button>

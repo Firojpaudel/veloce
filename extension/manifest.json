@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Veloce - High Speed Download Accelerator",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Blazingly fast dynamic multi-connection download accelerator and video stream sniffer powered by the Veloce engine.",
   "permissions": [
     "downloads",
@@ -11,6 +11,14 @@
   ],
   "host_permissions": [
     "<all_urls>"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*.png"
+      ],
+      "matches": ["<all_urls>"]
+    }
   ],
   "background": {
     "service_worker": "src/background.js"

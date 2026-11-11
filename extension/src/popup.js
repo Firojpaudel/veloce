@@ -118,7 +118,7 @@ function renderEngineTasks(tasks) {
 
     item.innerHTML = `
       <div class="task-top">
-        <span class="task-title ${isDone ? 'clickable' : ''}" title="${task.filename}" ${isDone ? `onclick="window.openTask('${task.id}')"` : ""}>${task.filename}</span>
+        <span class="task-title ${isDone ? 'clickable' : ''}" title="${task.filename}">${task.filename}</span>
         <span class="task-rate ${isRemoved ? 'deleted' : ''}">${rateText}</span>
       </div>
       <div class="progress-track">
@@ -127,12 +127,24 @@ function renderEngineTasks(tasks) {
       <div class="task-bottom">
         <span>${formatBytes(task.downloaded || 0)} / ${formatBytes(task.total_size || 0)} (${task.percent || 0}%)</span>
         <div class="task-ctrls">
-          ${isDone ? `<button class="btn-ctrl action" onclick="window.openTask('${task.id}')" title="Reveal in File Explorer">Folder</button>` : ""}
-          ${(!isDone && !isRemoved) ? `<button class="btn-ctrl" onclick="window.pauseTask('${task.id}')">Pause</button>` : ""}
-          <button class="btn-ctrl danger" onclick="window.cancelTask('${task.id}')">Remove</button>
+          ${isDone ? `<button class="btn-ctrl action btn-open-task" title="Reveal in File Explorer">Folder</button>` : ""}
+          ${(!isDone && !isRemoved) ? `<button class="btn-ctrl btn-pause-task">Pause</button>` : ""}
+          <button class="btn-ctrl danger btn-remove-task">Remove</button>
         </div>
       </div>
     `;
+
+    if (isDone) {
+      const titleEl = item.querySelector(".task-title");
+      if (titleEl) titleEl.addEventListener("click", () => openTask(task.id));
+      const btnOpen = item.querySelector(".btn-open-task");
+      if (btnOpen) btnOpen.addEventListener("click", () => openTask(task.id));
+    }
+    const btnPause = item.querySelector(".btn-pause-task");
+    if (btnPause) btnPause.addEventListener("click", () => pauseTask(task.id));
+    const btnRemove = item.querySelector(".btn-remove-task");
+    if (btnRemove) btnRemove.addEventListener("click", () => cancelTask(task.id));
+
     tasksList.appendChild(item);
   });
 
