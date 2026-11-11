@@ -84,7 +84,24 @@ def main():
     elif args.command == "daemon":
         run_server(port=args.port, host=args.host)
     else:
-        parser.print_help()
+        # Default action when double-clicked or launched without arguments:
+        # Start the background daemon so Windows/macOS desktop users get an active engine instantly.
+        print("\n" + "=" * 62)
+        print("  VELOCE CORE ENGINE (Dynamic 16x Multi-Stream Accelerator)")
+        print("=" * 62)
+        print("  Status: Starting local background daemon on 127.0.0.1:9229")
+        print("  • Connected to Veloce Browser Extension")
+        print("  • Keep this window open while using the browser")
+        print("  • Press Ctrl+C to stop the engine")
+        print("=" * 62 + "\n")
+        try:
+            run_server(port=9229, host="127.0.0.1")
+        except KeyboardInterrupt:
+            print("\n[INFO] Veloce engine stopped.")
+        except Exception as e:
+            print(f"\n[ERROR] Failed to start engine: {e}")
+            if sys.platform == "win32":
+                input("\nPress Enter to exit...")
 
 
 if __name__ == "__main__":

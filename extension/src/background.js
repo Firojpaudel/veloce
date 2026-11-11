@@ -131,8 +131,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           chrome.notifications.create({
             type: "basic",
             iconUrl: "../icons/icon48.png",
-            title: "Veloce Engine Required",
-            message: "YouTube/streaming video extraction requires the Veloce Core daemon. Please run: python3 main.py daemon"
+            title: "Veloce Engine Offline",
+            message: "Start the engine first: run veloce-windows-x64.exe (Windows) or ./veloce (Linux/Mac)."
           });
           sendResponse({ success: false, reason: "ENGINE_REQUIRED" });
           return;

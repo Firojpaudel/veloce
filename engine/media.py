@@ -11,6 +11,11 @@ import logging
 import subprocess
 from typing import Dict, List, Optional
 
+try:
+    import yt_dlp
+except ImportError:
+    yt_dlp = None
+
 logger = logging.getLogger("VeloceMedia")
 
 class MediaProbeResult:
@@ -35,30 +40,83 @@ class MediaEngine:
         Extracts all stream formats, resolutions, estimated file sizes,
         and audio-only tracks from any web video or stream manifest.
         """
-        cmd = [
-            "yt-dlp",
-            "--dump-json",
-            "--no-playlist",
-            "--no-warnings",
-            "--ignore-errors",
-            url
-        ]
+        data = None
 
-        if headers:
-            for k, v in headers.items():
-                if k.lower() in ["user-agent", "referer"]:
-                    cmd.extend(["--add-header", f"{k}:{v}"])
+        # 1. Try bundled yt_dlp module first (zero external binary dependency)
+        if yt_dlp is not None:
+            try:
+                ydl_opts = {
+                    "quiet": True,
+                    "no_warnings": True,
+                    "skip_download": True,
+                }
+                if headers:
+                    http_headers = {k: v for k, v in headers.items() if k.lower() in ["user-agent", "referer"]}
+                    if http_headers:
+                        ydl_opts["http_headers"] = http_headers
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    data = ydl.extract_info(url, download=False)
+            except Exception as e:
+                logger.warning(f"yt_dlp module probe failed: {e}")
+
+        # 2. Fallback to CLI binary if module failed or not installed
+        if data is None:
+            cmd = [
+                "yt-dlp",
+                "--dump-json",
+                "--no-playlist",
+                "--no-warnings",
+                "--ignore-errors",
+                url
+            ]
+
+            if headers:
+                for k, v in headers.items():
+                    if k.lower() in ["user-agent", "referer"]:
+                        cmd.extend(["--add-header", f"{k}:{v}"])
+
+            try:
+                res = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                    check=True
+                )
+                data = json.loads(res.stdout)
+            except Exception as e:
+                logger.warning(f"yt-dlp CLI probe failed: {e}")
+
+        if not data:
+            # Fallback for direct stream URLs
+            return {
+                "title": os.path.basename(url).split("?")[0] or "media_stream",
+                "duration": 0,
+                "thumbnail": "",
+                "video_formats": [
+                    {
+                        "format_id": "direct",
+                        "type": "video",
+                        "resolution": "Original / Stream",
+                        "height": 720,
+                        "ext": "mp4",
+                        "tag": "Direct Stream",
+                        "is_lightweight": True,
+                        "filesize": 0,
+                    }
+                ],
+                "audio_formats": [
+                    {
+                        "format_id": "audio_extract",
+                        "type": "audio",
+                        "ext": "mp3",
+                        "label": "Extracted MP3 Audio",
+                        "filesize": 0,
+                    }
+                ]
+            }
 
         try:
-            res = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=20,
-                check=True
-            )
-            data = json.loads(res.stdout)
-
             title = data.get("title", "video")
             duration = data.get("duration", 0)
             thumbnail = data.get("thumbnail", "")
@@ -170,6 +228,32 @@ class MediaEngine:
         os.makedirs(output_dir, exist_ok=True)
         out_template = os.path.join(output_dir, f"{filename_prefix}.%(ext)s")
 
+        # 1. Try bundled yt_dlp module first
+        if yt_dlp is not None:
+            try:
+                ydl_opts = {
+                    "outtmpl": out_template,
+                    "format": format_id,
+                    "quiet": False,
+                    "no_warnings": True,
+                }
+                if extract_audio:
+                    ydl_opts["format"] = "bestaudio/best"
+                    ydl_opts["postprocessors"] = [{
+                        "key": "FFmpegExtractAudio",
+                        "preferredcodec": audio_format,
+                        "preferredquality": "192",
+                    }]
+                else:
+                    ydl_opts["merge_output_format"] = "mp4"
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+                return out_template
+            except Exception as e:
+                logger.warning(f"yt_dlp in-process download failed: {e}, falling back to CLI")
+
+        # 2. Fallback to CLI binary
         cmd = [
             "yt-dlp",
             "--no-playlist",

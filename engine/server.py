@@ -250,11 +250,11 @@ class RequestHandler(BaseHTTPRequestHandler):
 def run_server(port: int = 9229, host: str = "127.0.0.1"):
     server_address = (host, port)
     httpd = HTTPServer(server_address, RequestHandler)
-    logger.info("Veloce Core Engine listening on http://%s:%d", host, port)
+    print(f"[OK] Veloce Engine listening at http://{host}:{port}/api", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        logger.info("Stopping server...")
+        print("\n[INFO] Stopping Veloce engine...", flush=True)
         httpd.server_close()
 
 

@@ -227,7 +227,7 @@
         }
       }, (resp) => {
         if (resp && resp.reason === "ENGINE_REQUIRED") {
-          alert("Veloce Engine Required:\n\nDownloading videos from YouTube requires the local Veloce engine to mux video and audio.\n\nPlease start the engine in terminal:\npython3 main.py daemon");
+          alert("Veloce Engine Offline:\n\nStreaming media extraction requires the Veloce engine running in the background.\n\nTo start the engine:\n• Windows: Double-click 'veloce-windows-x64.exe'\n• macOS / Linux: Run './veloce' (or 'python3 main.py daemon')\n\nOnce running, click Download again!");
         }
       });
     }
