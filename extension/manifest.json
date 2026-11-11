@@ -1,7 +1,8 @@
 {
+  "$schema": "https://json.schemastore.org/chrome-manifest.json",
   "manifest_version": 3,
   "name": "Veloce - High Speed Download Accelerator",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Blazingly fast dynamic multi-connection download accelerator and video stream sniffer powered by the Veloce engine.",
   "permissions": [
     "downloads",
@@ -15,7 +16,10 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "icons/*.png"
+        "icons/icon16.png",
+        "icons/icon32.png",
+        "icons/icon48.png",
+        "icons/icon128.png"
       ],
       "matches": ["<all_urls>"]
     }

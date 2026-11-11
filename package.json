@@ -7,12 +7,14 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "typecheck": "tsc -p jsconfig.json --noEmit && tsc -p extension/jsconfig.json --noEmit"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/chrome": "^0.3.7"
+    "@types/chrome": "^0.3.7",
+    "typescript": "^7.0.2"
   }
 }
