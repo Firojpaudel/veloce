@@ -377,7 +377,7 @@
         btn.replaceChildren(icon("alert", 14), "Retry");
         btn.title = res.error || res.reason || "Failed";
       } else {
-        done("Download started — track it from the Veloce toolbar icon");
+        done("Download started");
       }
     });
     return h("div", { class: `row${featured ? " featured" : ""}` },
@@ -485,7 +485,7 @@
         updateCount();
         startBtn.title = res.error || "Failed";
       } else {
-        done(`${entries.length} downloads queued (3 at a time)`);
+        done(`${entries.length} videos queued`);
       }
     });
     updateCount();
@@ -638,7 +638,7 @@
       .footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 4px; }
       .hint { font: 500 11px/1.4 var(--font); color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .toast { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px;
-        padding: 10px 14px; border-radius: 10px; background: var(--ok); color: #fff; font: 600 12.5px/1.2 var(--font); box-shadow: var(--shadow);
+        padding: 10px 14px; border-radius: 10px; background: var(--ok); color: #fff; font: 600 12.5px/1.2 var(--font); box-shadow: var(--shadow); white-space: nowrap;
         animation: pop .2s ease-out; max-width: calc(100% - 32px); }
       .dialog { position: relative; }
       @keyframes fade { from { opacity: 0 } }

@@ -15,6 +15,7 @@ A small, open-source download manager for Windows, macOS and Linux.</p>
 
 <p>
   <a href="#install"><strong>Install</strong></a> ·
+  <a href="docs/GUIDE.md"><strong>Guide</strong></a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#benchmarks">Benchmarks</a> ·
   <a href="#faq">FAQ</a>
@@ -66,6 +67,9 @@ Lives in your tray at about 22 MB of memory, catches browser downloads, and upda
 </sub></p>
 
 ## Install
+
+> [!TIP]
+> New to Veloce? The **[step-by-step guide](docs/GUIDE.md)** walks through installing, grabbing videos and playlists, the app's shortcuts, settings and troubleshooting — with short recordings.
 
 **1 · Get the app**
 
@@ -240,6 +244,8 @@ No. Those streams are DRM-protected, and breaking that is illegal in most countr
 <br/>
 Open Veloce (or turn on start at login). Until then, files still download through your browser as usual; video grabbing needs the app.
 </details>
+
+More answers — install steps for each system, every shortcut, settings and fixes — are in the **[Veloce guide](docs/GUIDE.md)**.
 
 ## Development
 
