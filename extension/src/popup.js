@@ -620,29 +620,28 @@ bindSetting("set-cookies", "sendCookies", (el) => el.checked);
 bindSetting("set-notify", "notifyOnComplete", (el) => el.checked);
 $("set-connections").addEventListener("input", (e) => { $("out-connections").textContent = e.target.value; });
 
-const THEME_ORDER = ["system", "light", "dark"];
-const THEME_ICON = { system: "monitor", light: "sun", dark: "moon" };
-const THEME_LABEL = { system: "System", light: "Light", dark: "Dark" };
+const osDark = matchMedia("(prefers-color-scheme: dark)");
+let themeSaved = "";
+const themeNow = () => themeSaved || (osDark.matches ? "dark" : "light");
 function setThemeChoice(value) {
-  applyTheme(value);
+  themeSaved = value === "light" || value === "dark" ? value : "";
+  applyTheme(themeSaved || "system");
+  const now = themeNow(), next = now === "dark" ? "light" : "dark";
   const tb = $("btn-theme");
-  tb.replaceChildren(icon(THEME_ICON[value] || "monitor", 16));
-  tb.title = `Theme: ${THEME_LABEL[value]} — click to change`;
-  tb.setAttribute("aria-label", `Theme: ${THEME_LABEL[value]}`);
-  tb.dataset.value = value;
-  try { localStorage.setItem(THEME_KEY, value); } catch { /* storage blocked */ }
-  document.querySelectorAll("#set-theme button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.themeValue === value)));
+  tb.replaceChildren(icon(now === "dark" ? "moon" : "sun", 16));
+  tb.title = `Switch to ${next} theme`;
+  tb.setAttribute("aria-label", `Switch to ${next} theme`);
+  try { if (themeSaved) localStorage.setItem(THEME_KEY, themeSaved); else localStorage.removeItem(THEME_KEY); } catch { /* storage blocked */ }
+  document.querySelectorAll("#set-theme button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.themeValue === now)));
 }
-$("btn-theme").addEventListener("click", () => {
-  const next = THEME_ORDER[(THEME_ORDER.indexOf($("btn-theme").dataset.value || "system") + 1) % 3];
-  setThemeChoice(next);
-  chrome.storage.local.set({ theme: next });
-  toast(`Theme: ${THEME_LABEL[next]}`);
-});
-document.querySelectorAll("#set-theme button").forEach((b) => b.addEventListener("click", () => {
-  setThemeChoice(b.dataset.themeValue);
-  chrome.storage.local.set({ theme: b.dataset.themeValue });
-}));
+function chooseTheme(value) {
+  const go = () => setThemeChoice(value);
+  if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) document.startViewTransition(go); else go();
+  chrome.storage.local.set({ theme: value });
+}
+$("btn-theme").addEventListener("click", () => chooseTheme(themeNow() === "dark" ? "light" : "dark"));
+document.querySelectorAll("#set-theme button").forEach((b) => b.addEventListener("click", () => chooseTheme(b.dataset.themeValue)));
+osDark.addEventListener("change", () => { if (!themeSaved) setThemeChoice(""); });
 
 function renderEngineInfo() {
   const dl = $("engine-info");

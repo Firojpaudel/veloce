@@ -46,17 +46,27 @@ EXTRA_TYPES = {".mkv": "video/x-matroska", ".m4a": "audio/mp4", ".opus": "audio/
                ".vtt": "text/vtt", ".srt": "text/plain", ".flac": "audio/flac", ".avif": "image/avif"}
 
 
+_lan = {"addr": "", "at": 0.0}
+
+
 def lan_address() -> str:
-    """This machine's address on the home network (no packets are sent)."""
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(("10.255.255.255", 1))
-            return s.getsockname()[0]
-    except OSError:
+    """This machine's address on the home network. No packets are sent and no DNS lookups are made
+    (resolving the hostname can stall for seconds on some Macs); cached for 30 s."""
+    if time.time() - _lan["at"] < 30 and _lan["addr"]:
+        return _lan["addr"]
+    addr = "127.0.0.1"
+    for probe in ("10.255.255.255", "192.168.255.255", "8.8.8.8"):
         try:
-            return socket.gethostbyname(socket.gethostname())
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect((probe, 1))  # UDP connect only picks a route; nothing is sent
+                found = s.getsockname()[0]
+            if found and not found.startswith("0."):
+                addr = found
+                break
         except OSError:
-            return "127.0.0.1"
+            continue
+    _lan.update(addr=addr, at=time.time())
+    return addr
 
 
 def kind_of(name: str) -> str:

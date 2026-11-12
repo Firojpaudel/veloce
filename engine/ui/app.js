@@ -514,9 +514,8 @@
       { label: "New download", icon: "plus", hint: "N", run: () => openAdd() },
       { label: "Open downloads folder", icon: "folder", run: openFolder },
       { label: "Clear finished downloads", icon: "sweep", run: clearFinished },
-      { label: "Theme: follow system", icon: "settings", run: () => setTheme("system") },
-      { label: "Theme: light", icon: "settings", run: () => setTheme("light") },
-      { label: "Theme: dark", icon: "settings", run: () => setTheme("dark") },
+      { label: "Theme: light", icon: "sun", run: () => setTheme("light") },
+      { label: "Theme: dark", icon: "moon", run: () => setTheme("dark") },
       { label: "Pause all", icon: "pause", run: () => bulk("pause", (t) => t.status === "DOWNLOADING" && t.kind !== "media") },
       { label: "Resume all", icon: "play", run: () => bulk("resume", (t) => t.status === "PAUSED") },
       { label: "Retry failed downloads", icon: "retry", run: () => bulk("resume", (t) => t.status === "ERROR") },
@@ -823,50 +822,42 @@
   });
   $("welcome-dismiss").addEventListener("click", () => { store.set("welcomeDismissed", true); $("welcome").hidden = true; });
 
-  // ---------------------------------------------------------------- theme (System / Light / Dark)
+  // ---------------------------------------------------------------- theme: Light or Dark (starts from the system's)
+  const osDark = matchMedia("(prefers-color-scheme: dark)");
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  const darkNow = () => getComputedStyle(document.documentElement).colorScheme.includes("dark");
+  const saved = () => { const v = store.get("veloce-theme-choice", ""); return v === "light" || v === "dark" ? v : ""; };
+  const current = () => saved() || (osDark.matches ? "dark" : "light");
 
-  /** Switches theme; when the colours actually change, the new theme spreads out from `origin` (a circle reveal). */
-  function setTheme(value, origin) {
-    const apply = () => {
-      if (value === "light" || value === "dark") document.documentElement.dataset.theme = value;
-      else delete document.documentElement.dataset.theme;
-    };
-    const wasDark = darkNow();
-    if (origin && document.startViewTransition && !reduceMotion.matches) {
-      const r = origin.getBoundingClientRect();
-      const x = r.left + r.width / 2, y = r.top + r.height / 2;
-      const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
-      const vt = document.startViewTransition(apply);
-      vt.ready.then(() => {
-        if (darkNow() === wasDark) return; // same colours (e.g. System → Light on a light OS): nothing to reveal
-        document.documentElement.animate(
-          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-          { duration: 480, easing: "cubic-bezier(0.16, 1, 0.3, 1)", pseudoElement: "::view-transition-new(root)" });
-      }).catch(() => {});
-    } else apply();
-    store.set("veloce-theme-choice", value);
-    try { if (value === "system") localStorage.removeItem("veloce-theme"); else localStorage.setItem("veloce-theme", value); } catch { /* blocked */ }
+  function drawTheme() {
+    const value = current();
     document.querySelectorAll("#set-theme button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.themeValue === value)));
-    const seg = $("set-theme");
-    seg.style.setProperty("--idx", String(Math.max(0, ["system", "light", "dark"].indexOf(value))));
+    $("set-theme").style.setProperty("--idx", value === "dark" ? "1" : "0");
     const tb = $("btn-theme");
-    const label = { system: "System", light: "Light", dark: "Dark" }[value] || "System";
-    const svg = icon({ system: "monitor", light: "sun", dark: "moon" }[value] || "monitor", 16);
+    const svg = icon(value === "dark" ? "moon" : "sun", 16);
     if (tb.dataset.value && tb.dataset.value !== value) svg.classList.add("icon-swap");
     tb.replaceChildren(svg);
-    tb.title = `Theme: ${label} — click to change`;
-    tb.setAttribute("aria-label", `Theme: ${label}`);
+    const next = value === "dark" ? "light" : "dark";
+    tb.title = `Switch to ${next} theme`;
+    tb.setAttribute("aria-label", `Switch to ${next} theme`);
     tb.dataset.value = value;
   }
-  $("btn-theme").addEventListener("click", () => {
-    const order = ["system", "light", "dark"];
-    const next = order[(order.indexOf($("btn-theme").dataset.value || "system") + 1) % 3];
-    setTheme(next, $("btn-theme"));
-  });
-  document.querySelectorAll("#set-theme button").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.themeValue, b)));
-  setTheme(store.get("veloce-theme-choice", "system"));
+  /** Applies a theme with a short crossfade (instant when reduced motion is on). */
+  function setTheme(value) {
+    if (value === current() && saved()) return;
+    const apply = () => {
+      document.documentElement.dataset.theme = value;
+      store.set("veloce-theme-choice", value);
+      try { localStorage.setItem("veloce-theme", value); } catch { /* blocked */ }
+      drawTheme();
+    };
+    if (document.startViewTransition && !reduceMotion.matches) document.startViewTransition(apply);
+    else apply();
+  }
+  $("btn-theme").addEventListener("click", () => setTheme(current() === "dark" ? "light" : "dark"));
+  document.querySelectorAll("#set-theme button").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.themeValue)));
+  osDark.addEventListener("change", () => { if (!saved()) drawTheme(); });
+  if (saved()) document.documentElement.dataset.theme = saved();
+  drawTheme();
 
   // ---------------------------------------------------------------- home-network sharing
   function drawShare(s) {
