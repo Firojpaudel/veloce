@@ -228,6 +228,7 @@ From MDM's README and source, November 2026. The two haven't been benchmarked on
 - **Home-network sharing is opt-in.** It is off every time Veloce starts. When you turn it on, a separate read-only server shares only your Veloce downloads folder (no hidden or unfinished files, nothing outside it) and asks each device for a 6-character code. After 5 wrong codes a device waits 1 min, then 5, 15 and 60. *New code* or turning it off signs every device out.
 - **Your logins stay yours.** Site cookies go only to the app on your computer, are dropped if a download redirects to another site, and are never saved.
 - **Contained.** Downloads can only be saved inside your Veloce folder; only `http(s)` links are accepted.
+- **Crash-safe.** Writes to `.veloce.part` with atomic replacement on completion, so interrupted transfers never leave corrupted files.
 - **Verified updates.** yt-dlp updates are checked against PyPI's published SHA-256 before use.
 
 ## Watch on your phone or laptop

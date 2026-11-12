@@ -10,6 +10,7 @@ import sys
 import json
 import time
 import uuid
+import atexit
 import logging
 import threading
 import subprocess
@@ -242,6 +243,12 @@ class TaskStore:
                         meta["status"] = "ERROR"
                         meta["error"] = "Interrupted when the engine stopped"
                     meta["speed"] = 0.0
+                    fpath = meta.get("file_path")
+                    if fpath:
+                        sidecar = f"{fpath}.veloce.json"
+                        part = f"{fpath}.veloce.part"
+                        if os.path.isfile(sidecar) and os.path.isfile(part):
+                            meta["sidecar"] = sidecar
                     self.task_metadata[meta["id"]] = meta
         except Exception as e:
             logger.warning(f"Could not load download history: {e}")
@@ -263,7 +270,8 @@ class TaskStore:
     # ---- file downloads
 
     def create_task(self, url: str, output_path: str = None, connections: int = 16,
-                    headers: dict = None, filename: Optional[str] = None, task_id: Optional[str] = None) -> str:
+                    headers: dict = None, filename: Optional[str] = None, task_id: Optional[str] = None,
+                    sidecar_data: Optional[dict] = None) -> str:
         task_id = task_id or uuid.uuid4().hex[:8]
         output_path = output_path or DEFAULT_DOWNLOAD_DIR
         created_at = time.time()
@@ -274,6 +282,7 @@ class TaskStore:
             num_connections=connections,
             headers=headers or {},
             suggested_filename=filename,
+            sidecar_data=sidecar_data,
         )
 
         def on_progress(info):
@@ -476,9 +485,31 @@ class TaskStore:
                 headers={}, page_url=meta.get("page_url"), task_id=task_id,
             )
         else:
-            self.create_task(url=meta["url"], output_path=out_dir, connections=meta.get("connections") or 16,
-                             filename=meta.get("filename"), task_id=task_id)
+            fpath = meta.get("file_path")
+            sidecar_data = None
+            output_target = out_dir
+            if fpath:
+                sidecar_path = f"{fpath}.veloce.json"
+                part_path = f"{fpath}.veloce.part"
+                if os.path.isfile(sidecar_path) and os.path.isfile(part_path):
+                    try:
+                        with open(sidecar_path, "r", encoding="utf-8") as f:
+                            sidecar_data = json.load(f)
+                        output_target = fpath
+                    except Exception as e:
+                        logger.warning(f"Failed to read sidecar for {fpath}: {e}")
+            self.create_task(url=meta["url"], output_path=output_target, connections=meta.get("connections") or 16,
+                             filename=meta.get("filename"), task_id=task_id, sidecar_data=sidecar_data)
         return True
+
+    def shutdown(self):
+        with self.lock:
+            for task in self.tasks.values():
+                if task and getattr(task, "_running", False):
+                    try:
+                        task._save_sidecar()
+                    except Exception:
+                        pass
 
     def remove_task(self, task_id: str) -> bool:
         """Removes a task from the list. Stops it (deleting only the *partial* file) if still running."""
@@ -495,6 +526,7 @@ class TaskStore:
 
 
 STORE = TaskStore()
+atexit.register(STORE.shutdown)
 
 
 class ProbeCache:

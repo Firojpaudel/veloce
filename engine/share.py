@@ -35,7 +35,7 @@ FREE_TRIES = 5
 LOCKOUTS = (60, 300, 900, 3600)  # like a phone: each wrong code past the free tries waits longer
 UI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui")
 
-HIDDEN_SUFFIXES = (".part", ".ytdl", ".tmp", ".crdownload", ".download")
+HIDDEN_SUFFIXES = (".part", ".ytdl", ".tmp", ".crdownload", ".download", ".veloce.part", ".veloce.json")
 VIDEO = {".mp4", ".m4v", ".webm", ".mov", ".mkv"}
 AUDIO = {".mp3", ".m4a", ".aac", ".ogg", ".opus", ".oga", ".wav", ".flac", ".weba"}
 IMAGE = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif", ".bmp"}

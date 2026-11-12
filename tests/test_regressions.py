@@ -227,7 +227,9 @@ class TestEngineCorrectness(unittest.TestCase):
             task.pause()
             t.join(20)
             self.assertEqual(task.status, "PAUSED")
-            self.assertTrue(os.path.exists(task.output_path))
+            self.assertFalse(os.path.exists(task.output_path))
+            self.assertTrue(os.path.exists(task.part_path))
+            self.assertTrue(os.path.exists(task.sidecar_path))
 
             RangeServer.delay = 0.0
             self.assertTrue(task.prepare_resume())

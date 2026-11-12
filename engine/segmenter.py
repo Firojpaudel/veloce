@@ -6,6 +6,7 @@ thread-safe work-stealing bisection, and pause/resume.
 
 import os
 import re
+import json
 import time
 import logging
 import mimetypes
@@ -220,12 +221,15 @@ def extension_for_content_type(content_type: str) -> str:
 
 
 def unique_path(path: str) -> str:
-    """Returns `path`, or `name (1).ext`, `name (2).ext`, ... if it already exists."""
-    if not os.path.exists(path):
+    """Returns `path`, or `name (1).ext`, `name (2).ext`, ... if it or its part file already exists."""
+    def _in_use(p: str) -> bool:
+        return os.path.exists(p) or os.path.exists(f"{p}.veloce.part")
+
+    if not _in_use(path):
         return path
     root, ext = os.path.splitext(path)
     n = 1
-    while os.path.exists(f"{root} ({n}){ext}"):
+    while _in_use(f"{root} ({n}){ext}"):
         n += 1
     return f"{root} ({n}){ext}"
 
@@ -271,7 +275,7 @@ class Segment:
 
     @property
     def downloaded_bytes(self) -> int:
-        return max(0, self.current - self.start)
+        return max(0, min(self.current - self.start, self.total_bytes))
 
     def to_dict(self) -> dict:
         return {
@@ -395,12 +399,30 @@ class SegmentManager:
                     shed += 1
             return shed
 
+    @classmethod
+    def from_segments(cls, total_size: int, segment_dicts: List[dict], num_connections: int = 8) -> "SegmentManager":
+        """Restores a SegmentManager from a persisted sidecar segment list."""
+        mgr = cls(total_size, num_connections)
+        if not segment_dicts:
+            return mgr
+        with mgr.lock:
+            mgr.segments = []
+            for i, d in enumerate(segment_dicts):
+                seg = Segment(i, int(d["start"]), int(d["end"]), int(d.get("current", d["start"])))
+                if seg.current > seg.end:
+                    seg.completed = True
+                mgr.segments.append(seg)
+            mgr._next_id = len(mgr.segments)
+        return mgr
+
     def reset_for_resume(self):
         with self.lock:
             for s in self.segments:
                 s.active = False
                 s.failures = 0
                 s.error = None
+                if s.current > s.end:
+                    s.completed = True
 
     def has_pending_work(self) -> bool:
         with self.lock:
@@ -408,6 +430,9 @@ class SegmentManager:
 
     def is_all_completed(self) -> bool:
         with self.lock:
+            for s in self.segments:
+                if s.current > s.end:
+                    s.completed = True
             return all(s.completed for s in self.segments)
 
     def total_downloaded(self) -> int:
@@ -511,6 +536,7 @@ class DownloadTask:
         progress_callback: Optional[Callable[[dict], None]] = None,
         suggested_filename: Optional[str] = None,
         adaptive: bool = True,
+        sidecar_data: Optional[dict] = None,
     ):
         # adaptive=True: start with a few connections, ramp up while it helps, shed slow sockets.
         # adaptive=False: open all `num_connections` immediately (classic fixed-N behaviour).
@@ -527,6 +553,9 @@ class DownloadTask:
         self.total_size = 0
         self.resumable = False
         self.content_type = ""
+        self.etag = ""
+        self.last_modified = ""
+        self.created_at = time.time()
         self.filename = "" if os.path.isdir(output_path) else os.path.basename(output_path)
         self.status = "QUEUED"
         self.error_message: Optional[str] = None
@@ -540,11 +569,22 @@ class DownloadTask:
         self._primed = None  # open probe response, reused as the first data stream
         self.ttfb = 0.3      # measured time-to-first-byte of the probe (seconds)
         self._primed_lock = threading.Lock()
+        self._sidecar_lock = threading.Lock()
+        self._last_sidecar_save = 0.0
+        self._pending_sidecar = sidecar_data
 
         self.start_time = 0.0
         self.last_bytes = 0
         self.last_time = 0.0
         self.current_speed = 0.0
+
+    @property
+    def part_path(self) -> str:
+        return f"{self.output_path}.veloce.part"
+
+    @property
+    def sidecar_path(self) -> str:
+        return f"{self.output_path}.veloce.json"
 
     # ------------------------------------------------------------------ probing
 
@@ -612,6 +652,8 @@ class DownloadTask:
                 self.headers = {k: v for k, v in self.headers.items() if k.title() not in SENSITIVE_HEADERS}
             self.url = final_url
             self.content_type = headers.get("Content-Type", "")
+            self.etag = headers.get("ETag", "").strip()
+            self.last_modified = headers.get("Last-Modified", "").strip()
 
             # Only a 206 with a Content-Range proves the server honors ranges.
             # "200 + Accept-Ranges: bytes" is not enough: many servers advertise it and ignore Range.
@@ -633,6 +675,33 @@ class DownloadTask:
             # Never clobber an existing file when we chose the name ourselves
             self.output_path = unique_path(os.path.join(self.output_path, self.filename))
         self._inspected = True
+
+        if self._pending_sidecar:
+            exp_etag = (self._pending_sidecar.get("etag") or "").strip()
+            exp_mtime = (self._pending_sidecar.get("last_modified") or "").strip()
+            exp_size = self._pending_sidecar.get("total_size") or 0
+
+            mismatch = None
+            if exp_etag and self.etag and exp_etag != self.etag:
+                mismatch = f"ETag changed from {exp_etag} to {self.etag}"
+            elif exp_mtime and self.last_modified and exp_mtime != self.last_modified:
+                mismatch = f"Last-Modified changed from {exp_mtime} to {self.last_modified}"
+            elif exp_size > 0 and self.total_size > 0 and exp_size != self.total_size:
+                mismatch = f"total_size changed from {exp_size} to {self.total_size}"
+
+            if mismatch:
+                logger.info(f"Server changed file for {self.output_path} ({mismatch}); discarding .part and starting fresh")
+                self._remove_partial()
+                self._pending_sidecar = None
+                self.manager = None
+            else:
+                logger.info(f"Resuming {self.output_path} from sidecar")
+                self.manager = SegmentManager.from_segments(
+                    self.total_size,
+                    self._pending_sidecar.get("segments", []),
+                    num_connections=self.num_connections,
+                )
+                self._pending_sidecar = None
 
     def _choose_filename(self, content_disposition_name: str) -> str:
         name = (
@@ -657,6 +726,7 @@ class DownloadTask:
             self.error_message = message
             self.status = "ERROR"
         self._stop_event.set()
+        self._save_sidecar()
 
     def _worker_loop(self):
         client = _RangeClient(self)
@@ -700,6 +770,8 @@ class DownloadTask:
         """Returns "done", "shed" (dropped for being slow), or "failed"."""
         headers = self._resolve_headers()
         headers["Range"] = f"bytes={seg.current}-{seg.end}"
+        if self.etag:
+            headers["If-Range"] = self.etag
 
         resp = None
         fully_read = False
@@ -747,7 +819,7 @@ class DownloadTask:
             resp = _urlopen(urllib.request.Request(self.url, headers=self._resolve_headers()), timeout=20)
         last_report = 0.0
         with resp:
-            with open(self.output_path, "wb") as f:
+            with open(self.part_path, "wb") as f:
                 while not self._stop_event.is_set():
                     data = resp.read(CHUNK_BUFFER_SIZE)
                     if not data:
@@ -759,6 +831,8 @@ class DownloadTask:
                         last_report = now
                         self._update_speed()
                         self._report_progress()
+                    if now - self._last_sidecar_save >= 2.0:
+                        self._save_sidecar()
 
         if self.total_size > 0 and self._single_stream_bytes < self.total_size and not self._stop_event.is_set():
             raise IOError(
@@ -807,12 +881,17 @@ class DownloadTask:
         if not self.resumable or self.total_size <= 0:
             self._download_single_stream()
             if not self._stop_event.is_set():
-                self.status = "COMPLETED"
+                if self.total_size <= 0 or self._single_stream_bytes == self.total_size:
+                    os.replace(self.part_path, self.output_path)
+                    self._delete_sidecar()
+                    self.status = "COMPLETED"
+                else:
+                    self.status = "ERROR"
             self._report_progress()
             return
 
         flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0)
-        self._fd = os.open(self.output_path, flags, 0o644)
+        self._fd = os.open(self.part_path, flags, 0o644)
         if self.manager is None:
             # Pre-allocate disk space to avoid filesystem fragmentation
             try:
@@ -856,13 +935,16 @@ class DownloadTask:
                 # progress is still reported at a calmer pace.
                 time.sleep(0.05)
                 if self.manager.is_all_completed():
-                    self.status = "COMPLETED"
                     break
                 now = time.monotonic()
                 if now - last_report >= 0.3:
                     last_report = now
                     self._update_speed()
                     self._report_progress()
+
+                now_wall = time.time()
+                if now_wall - self._last_sidecar_save >= 2.0:
+                    self._save_sidecar()
 
                 if not fanned_out:
                     if now - started < FANOUT_DELAY:
@@ -911,10 +993,21 @@ class DownloadTask:
             self._stop_event.set()
             for t in threads:
                 t.join()
-            os.close(self._fd)
-            self._fd = None
+            if self._fd is not None:
+                os.close(self._fd)
+                self._fd = None
             self.release_probe()
             self._report_progress()
+            if self.status in ("PAUSED", "ERROR"):
+                self._save_sidecar()
+
+        if self.manager.is_all_completed() and self._downloaded() == self.total_size:
+            os.replace(self.part_path, self.output_path)
+            self._delete_sidecar()
+            self.status = "COMPLETED"
+            self._report_progress()
+        elif not self._stop_event.is_set() and self.status not in TERMINAL_STATUSES:
+            self._fail(f"Download incomplete: segment byte count ({self._downloaded()}) does not match total size ({self.total_size})")
 
         if self.status == "ERROR":
             raise IOError(self.error_message or "Download failed")
@@ -986,9 +1079,10 @@ class DownloadTask:
         if self.status not in TERMINAL_STATUSES:
             self.status = "PAUSED"
         self._stop_event.set()
+        self._save_sidecar()
 
     def cancel(self):
-        """Stops the transfer and deletes the *partial* file. A completed file is never deleted."""
+        """Stops the transfer and deletes the partial and sidecar files."""
         if self.status == "COMPLETED":
             return
         self.status = "CANCELLED"
@@ -997,8 +1091,52 @@ class DownloadTask:
             self._remove_partial()
 
     def _remove_partial(self):
-        if self._inspected and os.path.isfile(self.output_path):
+        self._delete_sidecar()
+        if os.path.isfile(self.part_path):
             try:
-                os.remove(self.output_path)
+                os.remove(self.part_path)
             except OSError:
                 pass
+
+    def _save_sidecar(self):
+        """Atomically persists download progress to <final>.veloce.json."""
+        if not self._inspected or not self.output_path or not self.resumable or self.total_size <= 0:
+            return
+        with self._sidecar_lock:
+            try:
+                segments_data = []
+                if self.manager is not None:
+                    with self.manager.lock:
+                        segments_data = [
+                            {"start": s.start, "end": s.end, "current": s.current}
+                            for s in self.manager.segments
+                        ]
+                data = {
+                    "version": 1,
+                    "source_url": self.source_url,
+                    "final_url": self.url,
+                    "total_size": self.total_size,
+                    "etag": self.etag,
+                    "last_modified": self.last_modified,
+                    "content_type": self.content_type,
+                    "created_at": self.created_at,
+                    "segments": segments_data,
+                }
+                out_dir = os.path.dirname(os.path.abspath(self.sidecar_path))
+                os.makedirs(out_dir, exist_ok=True)
+                tmp_path = f"{self.sidecar_path}.tmp"
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f)
+                os.replace(tmp_path, self.sidecar_path)
+                self._last_sidecar_save = time.time()
+            except Exception as e:
+                logger.debug(f"Failed to write sidecar for {self.output_path}: {e}")
+
+    def _delete_sidecar(self):
+        with self._sidecar_lock:
+            for p in (self.sidecar_path, f"{self.sidecar_path}.tmp"):
+                if os.path.isfile(p):
+                    try:
+                        os.remove(p)
+                    except OSError:
+                        pass

@@ -9,6 +9,10 @@ import sys
 import tempfile
 
 _ROOT = tempfile.mkdtemp(prefix="veloce-tests-")
+for _k in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY"):
+    os.environ.pop(_k, None)
+os.environ["NO_PROXY"] = "*"
+os.environ["no_proxy"] = "*"
 os.environ.setdefault("VELOCE_HOME", os.path.join(_ROOT, "home"))
 os.environ.setdefault("VELOCE_DOWNLOAD_DIR", os.path.join(_ROOT, "downloads"))
 os.makedirs(os.environ["VELOCE_DOWNLOAD_DIR"], exist_ok=True)
