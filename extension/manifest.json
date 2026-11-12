@@ -3,7 +3,7 @@
   "manifest_version": 3,
   "name": "Veloce Download Accelerator",
   "short_name": "Veloce",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Faster downloads with adaptive multi-connection transfers, plus one-click video and audio grabbing from YouTube, TikTok, Instagram and more.",
   "minimum_chrome_version": "116",
   "permissions": [

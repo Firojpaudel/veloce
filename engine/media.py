@@ -394,6 +394,11 @@ class MediaEngine:
                     best_by_height[height] = f
 
         video_options = []
+        if not best_by_height and any((f.get("vcodec") or "none") != "none" or not f.get("vcodec")
+                                      for f in data.get("formats") or [] if (f.get("acodec") or "") != "none" or not f.get("acodec")):
+            # Streams that don't declare their resolution or codecs (common with HLS players): still offer them
+            video_options.append({"format_id": "best", "type": "video", "resolution": "Best", "height": 0, "ext": "mp4",
+                                  "fps": None, "vcodec": "", "tag": "Best available", "is_lightweight": False, "filesize": 0})
         for height, f in sorted(best_by_height.items(), reverse=True):
             tag = "4K" if height >= 2160 else "Quad HD" if height >= 1440 else "Full HD" if height >= 1080 \
                 else "HD" if height >= 720 else "SD"
@@ -424,16 +429,17 @@ class MediaEngine:
 
     @staticmethod
     def _locate_ffmpeg() -> bool:
-        """Finds ffmpeg in PATH, next to the executable, or in ~/.veloce/bin."""
-        if shutil.which("ffmpeg"):
-            return True
+        """Finds ffmpeg (Veloce's own copy in ~/.veloce/bin, the system's, or one next to the app) and puts it on PATH."""
+        from . import ffmpeg_setup
         exe = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
         exe_dir = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
-        for directory in (exe_dir, os.path.expanduser("~/.veloce/bin")):
-            if os.path.exists(os.path.join(directory, exe)):
-                os.environ["PATH"] = directory + os.pathsep + os.environ.get("PATH", "")
-                return True
-        return False
+        path = ffmpeg_setup.find() or (os.path.join(exe_dir, exe) if os.path.isfile(os.path.join(exe_dir, exe)) else None)
+        if not path:
+            return False
+        directory = os.path.dirname(path)
+        if directory not in os.environ.get("PATH", "").split(os.pathsep):
+            os.environ["PATH"] = directory + os.pathsep + os.environ.get("PATH", "")
+        return True
 
     @staticmethod
     def _find_output(output_dir: str, prefix: str, preferred: Optional[str] = None) -> Optional[str]:
@@ -456,6 +462,7 @@ class MediaEngine:
         progress_callback: Optional[Callable[[dict], None]] = None,
         should_stop: Optional[Callable[[], bool]] = None,
         cookies: Optional[List[dict]] = None,
+        referers: Optional[List[str]] = None,
     ) -> str:
         """
         Downloads a media stream with yt-dlp (16 concurrent fragments for HLS/DASH),
@@ -464,11 +471,12 @@ class MediaEngine:
         """
         with cookie_file(cookies) as cookiefile:
             return MediaEngine._download_impl(url, output_dir, filename_prefix, format_id, extract_audio,
-                                              audio_format, headers, progress_callback, should_stop, cookiefile)
+                                              audio_format, headers, progress_callback, should_stop, cookiefile,
+                                              referers or [])
 
     @staticmethod
     def _download_impl(url, output_dir, filename_prefix, format_id, extract_audio, audio_format,
-                       headers, progress_callback, should_stop, cookiefile) -> str:
+                       headers, progress_callback, should_stop, cookiefile, referers=()) -> str:
         os.makedirs(output_dir, exist_ok=True)
         out_template = os.path.join(output_dir, f"{filename_prefix}.%(ext)s")
         has_ffmpeg = MediaEngine._locate_ffmpeg()
@@ -518,6 +526,9 @@ class MediaEngine:
             elif has_ffmpeg:
                 primary["format"] = format_id
                 primary["merge_output_format"] = "mp4"
+                # Same resolution, but prefer H.264 + AAC: MP4s that play everywhere (Windows' player, iPhone,
+                # QuickTime), not AV1/Opus that only browsers and VLC handle.
+                primary["format_sort"] = ["res", "vcodec:h264", "acodec:aac"]
             else:
                 primary["format"] = "best[ext=mp4]/best"
 
@@ -527,9 +538,22 @@ class MediaEngine:
                 # Signed-in sessions make YouTube use stricter clients; the same video often works without them.
                 attempts.append({k: v for k, v in primary.items() if k != "cookiefile"})
             attempts.append({**{k: v for k, v in primary.items() if k != "cookiefile"}, "format": basic})
+            # A stream server that answers 403 usually checks which page is asking. Try the other pages we
+            # know about (the embedding page, the player's own site), with a matching Origin.
+            for ref in referers:
+                if not ref or ref == (http_headers or {}).get("Referer"):
+                    continue
+                try:
+                    origin = "{0.scheme}://{0.netloc}".format(urlparse(ref))
+                except ValueError:
+                    continue
+                attempts.append({**primary, "http_headers": {**(http_headers or {}), "Referer": ref, "Origin": origin}})
 
             last_error = None
-            for opts in attempts:
+            standard = len(attempts) - sum(1 for r in referers if r and r != (http_headers or {}).get("Referer"))
+            for i, opts in enumerate(attempts):
+                if i >= standard and last_error is not None and "403" not in str(last_error):
+                    break
                 try:
                     with yt_dlp.YoutubeDL(opts) as ydl:
                         ydl.download([url])
@@ -545,6 +569,9 @@ class MediaEngine:
                     last_error = e
                     logger.warning(f"yt_dlp download attempt failed: {e}")
             if not shutil.which("yt-dlp"):
+                if not has_ffmpeg and not extract_audio and "format" in str(last_error).lower():
+                    raise RuntimeError("Video needs ffmpeg to join the picture and sound, and Veloce couldn't set it up. "
+                                       "Check your internet connection and try again, or install ffmpeg yourself.")
                 raise RuntimeError(friendly_media_error(last_error))
 
         if not shutil.which("yt-dlp"):

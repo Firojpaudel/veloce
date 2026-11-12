@@ -20,7 +20,7 @@ from typing import Dict, Optional
 from .version import __version__
 from .segmenter import DownloadTask, MAX_CONNECTIONS, TERMINAL_STATUSES, sanitize_filename
 from .media import MediaEngine
-from .media_worker import run_job, MediaJobCancelled
+from .media_worker import run_job, MediaJobCancelled, WarmProbe
 
 logger = logging.getLogger("VeloceServer")
 
@@ -295,7 +295,8 @@ class TaskStore:
     def create_media_task(self, url: str, out_dir: str, title: str, format_id: str,
                           extract_audio: bool, audio_format: str, headers: dict,
                           page_url: Optional[str] = None, task_id: Optional[str] = None,
-                          cookies: Optional[list] = None, playlist: Optional[str] = None) -> str:
+                          cookies: Optional[list] = None, playlist: Optional[str] = None,
+                          referers: Optional[list] = None) -> str:
         task_id = task_id or uuid.uuid4().hex[:8]
         stop = threading.Event()
         with self.lock:
@@ -341,11 +342,25 @@ class TaskStore:
                     with self.lock:
                         if task_id in self.task_metadata:
                             self.task_metadata[task_id]["status"] = "INITIALIZING"
+                    # Video needs ffmpeg (to join video + audio) and YouTube needs a JS runtime. Both are
+                    # fetched once in the background at start; a job that arrives first waits for them.
+                    from . import ffmpeg_setup, jsruntime
+                    if not ffmpeg_setup.find() or not jsruntime.find_runtimes():
+                        with self.lock:
+                            if task_id in self.task_metadata:
+                                self.task_metadata[task_id]["note"] = "Setting up video support (one time)…"
+                        ffmpeg_setup.ensure()
+                        jsruntime.ensure_runtime()
+                        with self.lock:
+                            if task_id in self.task_metadata:
+                                self.task_metadata[task_id].pop("note", None)
+                    if stop.is_set():
+                        raise MediaJobCancelled("Cancelled before start")
                     # Runs in a child process: the engine itself never loads yt-dlp (see media_worker.py)
                     final_path = run_job({
                         "op": "download", "url": url, "output_dir": out_dir, "filename_prefix": title,
                         "format_id": format_id, "extract_audio": extract_audio, "audio_format": audio_format,
-                        "headers": headers, "cookies": cookies,
+                        "headers": headers, "cookies": cookies, "referers": referers or [],
                     }, on_progress=on_progress, stop=stop)
                 size = os.path.getsize(final_path) if os.path.exists(final_path) else 0
                 update = {"status": "COMPLETED", "percent": 100.0, "speed": 0.0, "eta": 0,
@@ -441,6 +456,78 @@ class TaskStore:
 
 
 STORE = TaskStore()
+
+
+class ProbeCache:
+    """
+    Format lookups are network-bound (seconds), so Veloce avoids repeating them:
+      * results are kept for 10 minutes (reopening the picker or the popup is instant);
+      * a lookup already running for a URL is shared, not started twice;
+      * lookups run in a warm helper that already has yt-dlp loaded;
+      * the extension starts the lookup when you point at a video ("prefetch"), so it's usually
+        finished by the time you click Download.
+    """
+    TTL = 600
+    MAX = 64
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._done = {}       # key -> (time, result)
+        self._running = {}    # key -> threading.Event
+        self._errors = {}     # key -> message
+        self.warm = WarmProbe()
+
+    @staticmethod
+    def _key(url, cookies):
+        return (url, bool(cookies))
+
+    def get(self, url, headers, cookies, wait=True):
+        key = self._key(url, cookies)
+        with self._lock:
+            hit = self._done.get(key)
+            if hit and time.time() - hit[0] < self.TTL:
+                return hit[1]
+            event = self._running.get(key)
+            owner = event is None
+            if owner:
+                event = self._running[key] = threading.Event()
+                self._errors.pop(key, None)
+        if not owner:
+            if not wait:
+                return None
+            event.wait(130)
+            with self._lock:
+                if key in self._done:
+                    return self._done[key][1]
+                raise RuntimeError(self._errors.get(key) or "Lookup failed")
+        try:
+            result = self.warm.probe({"op": "probe", "url": url, "headers": headers, "cookies": cookies})
+            with self._lock:
+                self._done[key] = (time.time(), result)
+                if len(self._done) > self.MAX:
+                    oldest = min(self._done, key=lambda k: self._done[k][0])
+                    self._done.pop(oldest, None)
+            return result
+        except Exception as e:
+            with self._lock:
+                self._errors[key] = str(e)
+            raise
+        finally:
+            with self._lock:
+                self._running.pop(key, None)
+            event.set()
+
+    def prefetch(self, url, headers, cookies):
+        threading.Thread(target=lambda: self._safe(url, headers, cookies), daemon=True).start()
+
+    def _safe(self, *args):
+        try:
+            self.get(*args)
+        except Exception:
+            pass
+
+
+PROBES = ProbeCache()
 
 
 # --------------------------------------------------------------------------- HTTP handler
@@ -595,10 +682,17 @@ class RequestHandler(BaseHTTPRequestHandler):
         if path == "/api/media/probe":
             url = require_http_url(payload.get("url"))
             try:
-                result = run_job({"op": "probe", "url": url, "headers": headers, "cookies": cookies}, timeout=120)
+                result = PROBES.get(url, headers, cookies)
             except Exception as e:
                 raise BadRequest(f"Couldn't read this page: {e}")
             self._send_json(200, {"success": True, "result": result})
+            return
+
+        if path == "/api/media/prefetch":
+            # Fire-and-forget: start the lookup now so the picker opens instantly later
+            PROBES.warm.warm()
+            PROBES.prefetch(require_http_url(payload.get("url")), headers, cookies)
+            self._send_json(202, {"success": True})
             return
 
         if path == "/api/media/download":
@@ -608,8 +702,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                 raise BadRequest(f"audio_format must be one of {', '.join(MediaEngine.AUDIO_FORMATS)}")
             format_id = MediaEngine.normalize_format(str(payload.get("format_id") or "720p"), extract_audio)
             out_dir = resolve_output_dir(payload.get("output_path"))
+            referers = [r for r in (payload.get("referers") or []) if isinstance(r, str) and r.startswith(("http://", "https://"))][:4]
             common = dict(format_id=format_id, extract_audio=extract_audio, audio_format=audio_format,
-                          headers=headers, cookies=cookies)
+                          headers=headers, cookies=cookies, referers=referers)
 
             entries = payload.get("entries")
             if entries is not None:

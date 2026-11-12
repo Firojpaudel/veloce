@@ -34,6 +34,7 @@ logger = logging.getLogger("VeloceJS")
 MIN_VERSIONS = {"deno": (2, 3, 0), "node": (22, 0, 0), "bun": (1, 2, 11)}
 DENO_RELEASE = "https://github.com/denoland/deno/releases/latest/download/"
 _lock = threading.Lock()
+_install_lock = threading.Lock()
 _cache: Optional[Dict[str, dict]] = None
 
 
@@ -129,8 +130,14 @@ def install_deno(timeout: float = 180) -> Optional[str]:
 
 
 def ensure_in_background():
-    """Called once when the app starts: makes sure YouTube support is ready before anyone needs it."""
-    threading.Thread(target=ensure_runtime, name="js-runtime-setup", daemon=True).start()
+    """Called once when the app starts: gets video support (Deno + ffmpeg) ready before anyone needs it."""
+    from . import ffmpeg_setup
+
+    def setup():
+        ffmpeg_setup.ensure()   # smaller and needed for every video, so first
+        ensure_runtime()
+
+    threading.Thread(target=setup, name="video-tools-setup", daemon=True).start()
 
 
 def status() -> dict:
@@ -146,10 +153,14 @@ def ensure_runtime() -> Dict[str, dict]:
         return found
     if os.environ.get("VELOCE_NO_AUTO_UPDATE", "").strip() in ("1", "true", "yes"):
         return found
-    try:
-        install_deno()
-    except Exception as e:
-        logger.warning(f"Couldn't set up a JavaScript runtime for YouTube: {e}")
+    with _install_lock:  # concurrent callers wait for the one download instead of starting another
+        found = find_runtimes(refresh=True)
+        if found:
+            return found
+        try:
+            install_deno()
+        except Exception as e:
+            logger.warning(f"Couldn't set up a JavaScript runtime for YouTube: {e}")
     return find_runtimes()
 
 

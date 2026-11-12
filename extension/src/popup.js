@@ -193,6 +193,7 @@ async function renderHere() {
   const [{ mediaSite }, streamsRes] = await Promise.all([msg("IS_MEDIA_SITE", { url: tab.url }), msg("GET_TAB_STREAMS", { tabId: tab.id })]);
   const streams = streamsRes.ok ? streamsRes.streams : [];
   if (!mediaSite && !streams.length) { card.hidden = true; return; }
+  if (mediaSite && state.engine) msg("PREFETCH_MEDIA", { url: tab.url, pageUrl: tab.url }); // ready by the time it's clicked
 
   const title = tab.title || hostOf(tab.url);
   const head = h("div", { class: "here-head" },
@@ -319,7 +320,7 @@ function updateCard(r, t) {
     r.st.title = t.error || "";
     r.right.textContent = "";
   } else {
-    r.st.textContent = { QUEUED: "Queued", INITIALIZING: "Starting…", PAUSED: `Paused · ${pct}%`, COMPLETED: size || "Done",
+    r.st.textContent = { QUEUED: "Queued", INITIALIZING: t.note || "Starting…", PAUSED: `Paused · ${pct}%`, COMPLETED: size || "Done",
       CANCELLED: "Cancelled", FILE_REMOVED: "File was deleted" }[t.status] || t.status;
     r.right.textContent = st === "done" ? fmtAgo(t.created_at) : "";
   }

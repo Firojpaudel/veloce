@@ -227,7 +227,8 @@ python3 main.py                               # the app
 | Popup says **Off** | The app isn't running. Open it, or turn on *Start at login*. |
 | No **Download** button on a video | Reload the page once after installing or updating the extension. The button appears when you point at the video itself. |
 | "Couldn't get this video" | The site may need you to be signed in — sign in in this browser and try again. Very new site changes are usually fixed by the daily yt-dlp update; in the app: Settings → **Check for update**. |
-| HD video saved without sound, or no MP3 option | ffmpeg is missing. The release builds look for it on your system; install it (section 8). |
+| Video says "Setting up video support" | First run only: Veloce is downloading ffmpeg (joins picture and sound) and Deno (needed for YouTube), about 70 MB in total. It happens once, in the background, right after you first open the app. |
+| Only audio downloads work | ffmpeg couldn't be set up — usually no internet at first launch. Restart Veloce while online, or install ffmpeg yourself (section 8). |
 | "Single connection" on a file | That server doesn't allow split downloads. Veloce still downloads it, at normal speed. |
 | A download says **Failed** | The reason is shown under its name. Press **Try again**. While the app stays open, it continues from where it stopped; after a restart it starts over. |
 | Port 9229 already in use | Another copy of Veloce is running (check the tray), or another program uses that port. |

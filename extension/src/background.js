@@ -416,6 +416,13 @@ const handlers = {
       () => void chrome.runtime.lastError);
     return {};
   },
+  async PREFETCH_MEDIA({ url, pageUrl }) {
+    if (!isHttp(url) || !(await engineStatus(500))) return {};
+    const headers = { "User-Agent": navigator.userAgent, ...(pageUrl && isHttp(pageUrl) ? { Referer: pageUrl } : {}) };
+    api("/media/prefetch", { method: "POST", body: { url, headers, cookies: await siteCookies(pageUrl || url) }, timeout: 5000 })
+      .catch(() => {});
+    return {};
+  },
   async IS_MEDIA_SITE({ url }) {
     return { mediaSite: isMediaSite(url) };
   },

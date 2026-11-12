@@ -166,8 +166,22 @@
     badgeHost.style.left = `${Math.min(window.innerWidth - 120, r.right - (vertical ? 108 : 112))}px`;
   }
 
+  // Start the format lookup the moment someone points at a video: by the time they click, it's usually done.
+  const prefetched = new Map();
+  function prefetch(video) {
+    let url = IN_FRAME ? "" : canonicalUrl(video);
+    if (!url) {
+      const src = video.currentSrc || video.src || "";
+      url = /^https?:/i.test(src) ? src : "";
+    }
+    if (!url || Date.now() - (prefetched.get(url) || 0) < 9 * 60 * 1000) return;
+    prefetched.set(url, Date.now());
+    send({ type: "PREFETCH_MEDIA", url, pageUrl: location.href });
+  }
+
   function showBadge(video) {
     clearTimeout(hideTimer);
+    if (badgeVideo !== video) prefetch(video);
     badgeVideo = video;
     if (!badgeHost.isConnected) document.documentElement.append(badgeHost);
     placeBadge(video);
@@ -395,7 +409,8 @@
 
   const mediaDownload = (ctx, title, extra) => send({
     type: "DOWNLOAD_MEDIA",
-    payload: { url: ctx.url, page_url: location.href, title, headers: { Referer: ctx.referer || location.href }, ...extra },
+    payload: { url: ctx.url, page_url: location.href, title, headers: { Referer: location.href },
+      referers: [ctx.referer].filter(Boolean), ...extra },
   });
 
   function videoList(videos, ctx, title) {
@@ -516,7 +531,8 @@
         // The frame that requested a stream is the Referer its server expects (embedded players live on other domains)
         action: () => (s.type === "File"
           ? send({ type: "DOWNLOAD_FILE", url: s.url, referrer: s.referer || location.href })
-          : send({ type: "DOWNLOAD_MEDIA", payload: { url: s.url, page_url: location.href, title, format_id: "best", headers: { Referer: s.referer || location.href } } })),
+          : send({ type: "DOWNLOAD_MEDIA", payload: { url: s.url, page_url: location.href, title, format_id: "best",
+            headers: { Referer: location.href }, referers: [s.referer].filter(Boolean) } })),
       }));
     }
     return list;

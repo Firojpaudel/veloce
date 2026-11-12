@@ -157,6 +157,31 @@ class TestMediaHelpers(unittest.TestCase):
         self.assertEqual(MediaEngine.normalize_format("1080p", True), "bestaudio/best")
 
 
+class TestMediaRobustness(unittest.TestCase):
+    def test_streams_without_resolution_still_offer_a_video_option(self):
+        info = {"title": "index", "duration": 10, "formats": [
+            {"format_id": "hls-1", "url": "https://x/1.m3u8", "protocol": "m3u8_native"},
+            {"format_id": "hls-2", "url": "https://x/2.m3u8", "protocol": "m3u8_native"}]}
+        summary = MediaEngine._summarize(info)
+        self.assertEqual([v["format_id"] for v in summary["video_formats"]], ["best"])
+
+    def test_storyboard_only_results_count_as_no_media(self):
+        from engine.media import _has_media_formats
+        self.assertFalse(_has_media_formats({"formats": [{"format_id": "sb0", "vcodec": "none", "acodec": "none"}]}))
+        self.assertTrue(_has_media_formats({"formats": [{"format_id": "251", "vcodec": "none", "acodec": "opus"}]}))
+
+    def test_plain_language_errors(self):
+        from engine.media import friendly_media_error
+        self.assertIn("didn't offer", friendly_media_error("ERROR: [youtube] x: Requested format is not available"))
+        self.assertIn("403", friendly_media_error("ERROR: unable to download video data: HTTP Error 403: Forbidden"))
+
+    def test_ffmpeg_pins_cover_every_release_platform(self):
+        from engine import ffmpeg_setup
+        for key in [("win32", "x86_64"), ("linux", "x86_64"), ("darwin", "aarch64"), ("darwin", "x86_64")]:
+            asset, sha = ffmpeg_setup.PINNED[key]
+            self.assertEqual(len(sha), 64)
+
+
 class TestUpdaterSafety(unittest.TestCase):
     def test_python_requirement_parsing(self):
         self.assertTrue(updater.python_supported(">=3.0"))

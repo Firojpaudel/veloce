@@ -316,7 +316,7 @@
 
     const pct = Math.floor(t.percent || 0);
     const label = {
-      QUEUED: "Queued", INITIALIZING: "Starting…", PAUSED: `Paused · ${pct}%`, COMPLETED: "Done",
+      QUEUED: "Queued", INITIALIZING: t.note || "Starting…", PAUSED: `Paused · ${pct}%`, COMPLETED: "Done",
       ERROR: "Failed", CANCELLED: "Cancelled", FILE_REMOVED: "File deleted",
       DOWNLOADING: t.total_size ? `${pct}%` : fmtBytes(t.downloaded),
     }[t.status] || t.status;
