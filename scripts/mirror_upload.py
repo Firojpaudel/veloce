@@ -6,8 +6,8 @@ Uploads files to the fast download mirror (a public Hugging Face dataset repo). 
 
   * tools/   — ffmpeg and Deno builds the app downloads (fetched from GitHub, verified against the
                pinned hashes, uploaded once: they never change)
-  * latest/  — this release's installer, binaries and extension (stable links for the README)
-  * v<ver>/  — the same files, kept per version
+  * latest/  — the newest release's installer, binaries and extension (stable links for the README).
+               Older versions are removed here — they stay on GitHub Releases.
 
 Needs HF_TOKEN (a write token from the account that owns the repo) and pip install huggingface_hub.
 """
@@ -55,10 +55,18 @@ def main():
                         repo_id=REPO_ID, repo_type="dataset", commit_message=f"tools: {name}")
         print("uploaded tools/" + name)
 
-    for folder in (f"v{version}", "latest"):
-        api.upload_folder(folder_path=assets, path_in_repo=folder, repo_id=REPO_ID, repo_type="dataset",
-                          commit_message=f"Veloce {version}", delete_patterns=["*"] if folder == "latest" else None)
-        print(f"uploaded release files to {folder}/")
+    # Only the newest release lives here; older versions stay on GitHub Releases.
+    api.upload_folder(folder_path=assets, path_in_repo="latest", repo_id=REPO_ID, repo_type="dataset",
+                      commit_message=f"Veloce {version}", delete_patterns=["*"])
+    print("uploaded release files to latest/")
+    old = sorted({f.split("/")[0] for f in existing if f.split("/")[0] not in ("latest", "tools", ".gitattributes")
+                  and "/" in f})
+    for folder in old:
+        api.delete_folder(path_in_repo=folder, repo_id=REPO_ID, repo_type="dataset", commit_message=f"remove {folder}")
+        print(f"removed old {folder}/")
+    # Deleted files would otherwise stay in the repo's git history and keep using storage
+    api.super_squash_history(repo_id=REPO_ID, repo_type="dataset", commit_message=f"Veloce {version} (latest only)")
+    print("squashed history: only the current files are stored")
 
 
 if __name__ == "__main__":
