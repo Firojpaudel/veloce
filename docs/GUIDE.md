@@ -22,7 +22,7 @@ The app is the engine that does the fast downloading. It runs quietly in your sy
 
 ### Download
 
-Get the file for your computer from the [latest release](https://github.com/Firojpaudel/veloce/releases/latest):
+Get the file for your computer from the [fast download mirror](https://huggingface.co/datasets/Firoj112/veloce-downloads/tree/main/latest) (or the [GitHub release](https://github.com/Firojpaudel/veloce/releases/latest) — same files, often much slower):
 
 | Your computer | File |
 | :--- | :--- |
@@ -41,7 +41,7 @@ Get the file for your computer from the [latest release](https://github.com/Firo
 **macOS** — the easiest way is one Terminal line. Files downloaded with `curl` aren't quarantined, so there's no security prompt:
 
 ```bash
-curl -fL -o /usr/local/bin/veloce https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-arm64 && chmod +x /usr/local/bin/veloce && veloce
+curl -fL -o /usr/local/bin/veloce https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-macos-arm64 && chmod +x /usr/local/bin/veloce && veloce
 ```
 
 On an Intel Mac use `veloce-macos-x86_64`. If you're asked for a password, put `sudo` before `curl` and `chmod`.
@@ -72,7 +72,7 @@ The Veloce window opens in your browser at `http://127.0.0.1:9229`, and a Veloce
 
 The extension adds the **Download** button to videos and hands browser downloads to the app. It works in Chrome, Edge, Brave, Opera, Vivaldi and other Chromium browsers.
 
-1. Download [`veloce-extension.zip`](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-extension.zip) and unzip it somewhere permanent (for example `Documents/veloce-extension`). Don't delete the folder afterwards — the browser loads it from there.
+1. Download [`veloce-extension.zip`](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-extension.zip) and unzip it somewhere permanent (for example `Documents/veloce-extension`). Don't delete the folder afterwards — the browser loads it from there.
 2. Open `chrome://extensions` (Edge: `edge://extensions`).
 3. Switch on **Developer mode** (top-right).
 4. Click **Load unpacked** and choose the unzipped folder.

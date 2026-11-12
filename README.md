@@ -73,9 +73,11 @@ Lives in your tray at about 22 MB of memory, catches browser downloads, and upda
 
 **1 · Get the app**
 
+<sub>Downloads come from a fast CDN mirror. Prefer GitHub? Every file is also on the <a href="https://github.com/Firojpaudel/veloce/releases/latest">Releases page</a>.</sub>
+
 | Windows 10/11 | macOS (Apple Silicon) | macOS (Intel) | Linux |
 | :---: | :---: | :---: | :---: |
-| [**Installer**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-setup-windows-x64.exe) · [portable zip](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-windows-x64-portable.zip) | [**veloce-macos-arm64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-arm64) | [**veloce-macos-x86_64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-x86_64) | [**veloce-linux-x86_64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-linux-x86_64) |
+| [**Installer**](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-setup-windows-x64.exe) · [portable zip](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-windows-x64-portable.zip) | [**veloce-macos-arm64**](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-macos-arm64) | [**veloce-macos-x86_64**](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-macos-x86_64) | [**veloce-linux-x86_64**](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-linux-x86_64) |
 
 Open it. Veloce settles into your system tray and opens its window.
 
@@ -92,13 +94,13 @@ Files downloaded with `curl` aren't quarantined, so macOS doesn't block them:
 
 ```bash
 # macOS, Apple Silicon (M1 or newer)
-curl -fL -o /usr/local/bin/veloce https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-arm64 && chmod +x /usr/local/bin/veloce && veloce
+curl -fL -o /usr/local/bin/veloce https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-macos-arm64 && chmod +x /usr/local/bin/veloce && veloce
 
 # macOS, Intel
-curl -fL -o /usr/local/bin/veloce https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-x86_64 && chmod +x /usr/local/bin/veloce && veloce
+curl -fL -o /usr/local/bin/veloce https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-macos-x86_64 && chmod +x /usr/local/bin/veloce && veloce
 
 # Linux (x86-64)
-mkdir -p ~/.local/bin && curl -fL -o ~/.local/bin/veloce https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-linux-x86_64 && chmod +x ~/.local/bin/veloce && ~/.local/bin/veloce
+mkdir -p ~/.local/bin && curl -fL -o ~/.local/bin/veloce https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-linux-x86_64 && chmod +x ~/.local/bin/veloce && ~/.local/bin/veloce
 ```
 
 If `/usr/local/bin` needs a password on your Mac, put `sudo` before `curl` and `chmod`.
@@ -109,7 +111,7 @@ If `/usr/local/bin` needs a password on your Mac, put `sudo` before `curl` and `
 
 **2 · Add the browser extension** (Chrome, Edge, Brave and other Chromium browsers)
 
-1. Download and unzip [**veloce-extension.zip**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-extension.zip).
+1. Download and unzip [**veloce-extension.zip**](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-extension.zip).
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and choose the folder.
 3. Pin Veloce to your toolbar. <kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>V</kbd> opens it.
 
