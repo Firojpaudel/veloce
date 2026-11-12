@@ -99,22 +99,63 @@ async function maybeSelfUpdate(status) {
   chrome.runtime.reload();
 }
 
-/** Cookies for a URL's site (incl. subdomains) in chrome.cookies shape, for yt-dlp's cookies.txt. */
+// Known media host aliases where extracting media from a shortened or alias domain requires cookies from the primary site.
+const RELATED_MEDIA_URLS = {
+  "youtu.be": ["https://www.youtube.com/"],
+  "fb.watch": ["https://www.facebook.com/"],
+  "twitter.com": ["https://x.com/"],
+  "x.com": ["https://twitter.com/"],
+};
+
+// Common public suffixes to guard against broad cookie harvesting.
+const COMMON_PUBLIC_SUFFIXES = new Set([
+  "co.uk", "org.uk", "me.uk", "ltd.uk", "plc.uk", "net.uk", "sch.uk", "gov.uk", "ac.uk",
+  "com.au", "net.au", "org.au", "edu.au", "gov.au",
+  "co.nz", "net.nz", "org.nz",
+  "co.jp", "ne.jp", "or.jp", "ac.jp",
+  "com.br", "net.br", "org.br",
+  "github.io", "gitlab.io", "pages.dev", "vercel.app", "netlify.app",
+]);
+
+function isPublicSuffix(host) {
+  if (!host) return true;
+  const h = host.toLowerCase().replace(/^\.+|\.+$/g, "");
+  return COMMON_PUBLIC_SUFFIXES.has(h);
+}
+
+/** Cookies for a URL's site in chrome.cookies shape, for yt-dlp's cookies.txt. */
 async function siteCookies(url) {
   const { sendCookies } = await getSettings();
   if (!sendCookies || !isHttp(url)) return [];
-  const host = hostOf(url).replace(/^www\./, "");
-  const parts = host.split(".");
-  const domain = parts.length > 2 ? parts.slice(-2).join(".") : host;
-  try {
-    const list = await chrome.cookies.getAll({ domain });
-    return list.map((c) => ({
-      name: c.name, value: c.value, domain: c.domain, path: c.path,
-      secure: c.secure, httpOnly: c.httpOnly, expirationDate: c.expirationDate || 0,
-    }));
-  } catch {
-    return [];
+  const host = hostOf(url);
+  if (isPublicSuffix(host)) return [];
+
+  const urlsToQuery = [url];
+  const related = RELATED_MEDIA_URLS[host] || [];
+  for (const r of related) {
+    if (!urlsToQuery.includes(r)) urlsToQuery.push(r);
   }
+
+  const seen = new Set();
+  const result = [];
+  for (const targetUrl of urlsToQuery) {
+    try {
+      const list = await chrome.cookies.getAll({ url: targetUrl });
+      for (const c of list) {
+        const key = `${c.domain}:${c.name}:${c.path}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.push({
+            name: c.name, value: c.value, domain: c.domain, path: c.path,
+            secure: c.secure, httpOnly: c.httpOnly, expirationDate: c.expirationDate || 0,
+          });
+        }
+      }
+    } catch {
+      // ignore query errors
+    }
+  }
+  return result;
 }
 
 /** A Cookie header for exactly this URL (file downloads). */
@@ -460,7 +501,7 @@ const handlers = {
   async PREFETCH_MEDIA({ url, pageUrl }) {
     if (!isHttp(url) || !(await engineStatus(500))) return {};
     const headers = { "User-Agent": navigator.userAgent, ...(pageUrl && isHttp(pageUrl) ? { Referer: pageUrl } : {}) };
-    api("/media/prefetch", { method: "POST", body: { url, headers, cookies: await siteCookies(pageUrl || url) }, timeout: 5000 })
+    api("/media/prefetch", { method: "POST", body: { url, headers }, timeout: 5000 })
       .catch(() => {});
     return {};
   },

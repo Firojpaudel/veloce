@@ -126,15 +126,26 @@ class Share:
                 return self.status()
             os.makedirs(self.root, exist_ok=True)
             handler = type("ShareHandler", (_Handler,), {"share": self})
+            bind_addr = lan_address()
             last = None
-            for port in PORTS:
-                try:
-                    server = ThreadingHTTPServer(("0.0.0.0", port), handler)
-                    break
-                except OSError as e:
-                    last = e
-            else:
-                raise OSError(f"No free port for sharing ({last})")
+            server = None
+            # Bind to detected LAN address first; fall back to 0.0.0.0 only if binding fails
+            if bind_addr and bind_addr != "0.0.0.0":
+                for port in PORTS:
+                    try:
+                        server = ThreadingHTTPServer((bind_addr, port), handler)
+                        break
+                    except OSError as e:
+                        last = e
+            if server is None:
+                for port in PORTS:
+                    try:
+                        server = ThreadingHTTPServer(("0.0.0.0", port), handler)
+                        break
+                    except OSError as e:
+                        last = e
+                else:
+                    raise OSError(f"No free port for sharing ({last})")
             server.daemon_threads = True
             self._new_code()
             self._server = server

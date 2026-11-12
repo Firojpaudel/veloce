@@ -20,7 +20,7 @@ from typing import Dict, Optional
 
 from .version import __version__
 from .segmenter import DownloadTask, MAX_CONNECTIONS, TERMINAL_STATUSES, sanitize_filename
-from .media import MediaEngine
+from .media import MediaEngine, disambiguate_media_title
 from .media_worker import run_job, MediaJobCancelled, WarmProbe
 
 logger = logging.getLogger("VeloceServer")
@@ -32,10 +32,18 @@ DEFAULT_DOWNLOAD_DIR = os.path.abspath(
 HISTORY_FILE = os.path.join(VELOCE_HOME, "history.json")
 HISTORY_LIMIT = 200
 
-# Optional comma-separated allow-list of extension IDs. When unset, any browser-extension origin is accepted.
-ALLOWED_EXTENSION_IDS = {
-    i.strip() for i in os.environ.get("VELOCE_EXTENSION_IDS", "").split(",") if i.strip()
+# Pinned unpacked extension ID (derived from extension/manifest.json "key") and CWS placeholder
+DEFAULT_EXTENSION_IDS = {
+    "faaebjnfegkfoehnbilkajcdkjjngeap",  # pinned unpacked extension ID from extension/manifest.json key
+    "velocecwsplaceholder00000000000",   # reserved placeholder for future Chrome Web Store ID
 }
+# Extension IDs allow-list: defaults to pinned extension ID + placeholder.
+# Set VELOCE_EXTENSION_IDS to override (comma-separated, or empty to allow any extension).
+ALLOWED_EXTENSION_IDS = (
+    {i.strip() for i in os.environ["VELOCE_EXTENSION_IDS"].split(",") if i.strip()}
+    if "VELOCE_EXTENSION_IDS" in os.environ
+    else set(DEFAULT_EXTENSION_IDS)
+)
 EXTENSION_SCHEMES = ("chrome-extension", "moz-extension")
 ALLOWED_HOSTS = ("127.0.0.1", "localhost", "[::1]")
 MAX_BODY_BYTES = 4 * 1024 * 1024  # playlists + cookies can be sizeable
@@ -344,6 +352,7 @@ class TaskStore:
                           page_url: Optional[str] = None, task_id: Optional[str] = None,
                           cookies: Optional[list] = None, playlist: Optional[str] = None,
                           referers: Optional[list] = None, subtitle_urls: Optional[list] = None) -> str:
+        title = disambiguate_media_title(out_dir, title, url)
         task_id = task_id or uuid.uuid4().hex[:8]
         stop = threading.Event()
         with self.lock:

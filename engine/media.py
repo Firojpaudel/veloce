@@ -5,6 +5,7 @@ and audio extraction via yt-dlp & ffmpeg.
 """
 
 import os
+import re
 import sys
 import json
 import shutil
@@ -112,6 +113,33 @@ def organize_captions(video_path: str) -> str:
     return new_video
 
 
+def detect_caption_format(content_type: str, raw_bytes: bytes) -> Optional[str]:
+    """
+    Detects whether untrusted caption input is a recognized format (webvtt, srt, ass).
+    Prevents passing non-caption formats or crafted files to ffmpeg.
+    """
+    ct = (content_type or "").lower()
+    head = raw_bytes[:2048].strip()
+    if head.startswith(b"\xef\xbb\xbf"):  # strip UTF-8 BOM
+        head = head[3:].strip()
+
+    # WebVTT
+    if "text/vtt" in ct or head.startswith(b"WEBVTT"):
+        return "webvtt"
+
+    # ASS / SSA
+    if "text/x-ssa" in ct or "text/x-ass" in ct or head.startswith(b"[Script Info]"):
+        return "ass"
+
+    # SRT / SubRip
+    if "subrip" in ct or "text/srt" in ct:
+        return "srt"
+    if re.search(rb"^\d+\s*[\r\n]+\d{2}:\d{2}:\d{2}", head) or (b"-->" in head and b":" in head):
+        return "srt"
+
+    return None
+
+
 def attach_subtitles(video_path: str, urls: List[str], headers: Dict[str, str]):
     """
     Captions the page's player loaded as separate files (.vtt/.srt/.ass): saves each as .srt next to the
@@ -129,18 +157,38 @@ def attach_subtitles(video_path: str, urls: List[str], headers: Dict[str, str]):
                 continue
             raw = os.path.join(tmp, f"sub{i}")
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", **headers})
-            with urllib.request.urlopen(req, timeout=30) as r, open(raw, "wb") as f:
-                f.write(r.read(5 * 1024 * 1024))  # caption files are small; cap just in case
+            try:
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    content_type = r.headers.get("Content-Type", "")
+                    data = r.read(5 * 1024 * 1024)  # caption files are small; cap just in case
+            except Exception as e:
+                logger.warning(f"Failed to fetch subtitle {url}: {e}")
+                continue
+
+            fmt = detect_caption_format(content_type, data)
+            if not fmt:
+                logger.warning(f"Skipping subtitle {url}: unrecognized format (Content-Type: {content_type})")
+                continue
+
+            with open(raw, "wb") as f:
+                f.write(data)
+
             out = f"{root}.{i + 1}.srt" if len(urls) > 1 else f"{root}.srt"
-            res = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", raw, out], capture_output=True)
-            if res.returncode == 0 and os.path.getsize(out) > 0:
+            res = subprocess.run([
+                "ffmpeg", "-y", "-loglevel", "error",
+                "-protocol_whitelist", "file",
+                "-f", fmt,
+                "-i", raw,
+                out
+            ], capture_output=True)
+            if res.returncode == 0 and os.path.exists(out) and os.path.getsize(out) > 0:
                 srts.append(out)
         if not srts or ext.lower() not in (".mp4", ".m4v", ".mkv"):
             return
         embedded = os.path.join(tmp, "with-subs" + ext)
-        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", video_path]
+        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-protocol_whitelist", "file", "-i", video_path]
         for srt in srts:
-            cmd += ["-i", srt]
+            cmd += ["-protocol_whitelist", "file", "-f", "srt", "-i", srt]
         cmd += ["-map", "0"] + sum((["-map", str(i + 1)] for i in range(len(srts))), [])
         cmd += ["-c", "copy", "-c:s", "mov_text" if ext.lower() in (".mp4", ".m4v") else "srt", embedded]
         if subprocess.run(cmd, capture_output=True).returncode == 0:
@@ -268,6 +316,33 @@ def _direct_fallback(url: str) -> dict:
             "filesize": 0,
         }],
     }
+
+
+def disambiguate_media_title(out_dir: str, title: str, url: str) -> str:
+    """
+    If <title>.<ext> already exists in out_dir, use <title> [<video id or 6-char hash>]
+    so yt-dlp never silently returns or overwrites an older file as the result.
+    """
+    exts = OUTPUT_EXTENSIONS + ("m4v",)
+    exists = any(os.path.exists(os.path.join(out_dir, f"{title}.{ext}")) for ext in exts)
+    if not exists:
+        return title
+
+    vid = None
+    try:
+        parsed = urlparse(url)
+        if "youtube.com" in parsed.netloc:
+            qs = parse_qs(parsed.query)
+            if qs.get("v"):
+                vid = qs["v"][0]
+        elif "youtu.be" in parsed.netloc:
+            vid = parsed.path.strip("/").split("/")[0]
+    except Exception:
+        pass
+
+    import hashlib
+    tag = vid if (vid and re.match(r"^[\w-]+$", vid)) else hashlib.sha256(url.encode()).hexdigest()[:6]
+    return f"{title} [{tag}]"
 
 
 class MediaEngine:
@@ -582,6 +657,7 @@ class MediaEngine:
     def _download_impl(url, output_dir, filename_prefix, format_id, extract_audio, audio_format,
                        headers, progress_callback, should_stop, cookiefile, referers=()) -> str:
         os.makedirs(output_dir, exist_ok=True)
+        filename_prefix = disambiguate_media_title(output_dir, filename_prefix, url)
         out_template = os.path.join(output_dir, f"{filename_prefix}.%(ext)s")
         has_ffmpeg = MediaEngine._locate_ffmpeg()
         http_headers = MediaEngine._filter_headers(headers)

@@ -95,8 +95,9 @@ class TestOriginValidation(unittest.TestCase):
             self.assertFalse(is_allowed_origin(origin), origin)
 
     def test_extension_origins_allowed(self):
-        self.assertTrue(is_allowed_origin("chrome-extension://abcdefghijklmnop"))
-        self.assertTrue(is_allowed_origin("moz-extension://1234-5678"))
+        self.assertTrue(is_allowed_origin("chrome-extension://faaebjnfegkfoehnbilkajcdkjjngeap"))
+        self.assertTrue(is_allowed_origin("chrome-extension://velocecwsplaceholder00000000000"))
+        self.assertFalse(is_allowed_origin("chrome-extension://abcdefghijklmnop"))
         self.assertFalse(is_allowed_origin("chrome-extension://"))
 
 
@@ -112,7 +113,7 @@ class TestServerHardening(unittest.TestCase):
             s.shutdown()
             s.server_close()
 
-    def post(self, path, body, origin="chrome-extension://testext"):
+    def post(self, path, body, origin="chrome-extension://faaebjnfegkfoehnbilkajcdkjjngeap"):
         req = urllib.request.Request(
             f"{self.api_url}{path}", data=json.dumps(body).encode(),
             headers={"Content-Type": "application/json", "Origin": origin},
