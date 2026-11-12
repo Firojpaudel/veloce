@@ -193,6 +193,13 @@ class TestUpdaterSafety(unittest.TestCase):
         self.assertGreater(updater.parse_version("2026.10.26"), updater.parse_version("2026.8.19"))
         self.assertGreater(updater.parse_version("2026.10.26.1"), updater.parse_version("2026.10.26"))
 
+    def test_verify_checksum_signature_graceful_fallback(self):
+        from engine.app_update import verify_checksum_signature
+        sums_data = b"abcdef1234567890 *veloce-setup.exe\n"
+        # When no signature assets exist, falls back gracefully returning False
+        res = verify_checksum_signature(sums_data, {})
+        self.assertFalse(res)
+
 
 if __name__ == "__main__":
     unittest.main()

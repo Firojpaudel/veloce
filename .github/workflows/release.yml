@@ -125,6 +125,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+      id-token: write  # Needed for Sigstore Cosign keyless signing
     steps:
       - uses: actions/checkout@v4
 
@@ -141,6 +144,22 @@ jobs:
 
       - name: Checksums
         run: cd release_assets && sha256sum * > SHA256SUMS.txt
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.8.0
+
+      - name: Sign release assets with Sigstore Cosign (keyless OIDC)
+        run: |
+          cd release_assets
+          for file in *; do
+            if [ -f "$file" ]; then
+              cosign sign-blob --yes \
+                --output-signature "${file}.sig" \
+                --output-certificate "${file}.pem" \
+                --bundle "${file}.bundle" \
+                "$file"
+            fi
+          done
 
       # Fast mirror (Hugging Face CDN) — runs only when you've added your own HF_TOKEN secret
       - name: Upload to the fast download mirror

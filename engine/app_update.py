@@ -96,12 +96,70 @@ def check(force: bool = False, fetch: bool = True) -> dict:
         }
 
 
+def verify_checksum_signature(sums_bytes: bytes, assets: dict) -> bool:
+    """
+    Verifies the integrity of SHA256SUMS.txt against cryptographic release signatures.
+    If Sigstore cosign is installed, verifies keyless OIDC identity against this repo's release workflow.
+    If minisign is installed, verifies against the release minisig file.
+    If no verification tooling is present on PATH, falls back safely to GitHub HTTPS transport.
+    """
+    cosign_exe = shutil.which("cosign")
+    if cosign_exe and "SHA256SUMS.txt.sig" in assets and "SHA256SUMS.txt.pem" in assets:
+        with tempfile.TemporaryDirectory() as td:
+            sums_path = os.path.join(td, "SHA256SUMS.txt")
+            sig_path = os.path.join(td, "SHA256SUMS.txt.sig")
+            pem_path = os.path.join(td, "SHA256SUMS.txt.pem")
+            with open(sums_path, "wb") as f:
+                f.write(sums_bytes)
+            with open(sig_path, "wb") as f:
+                f.write(_get(assets["SHA256SUMS.txt.sig"]))
+            with open(pem_path, "wb") as f:
+                f.write(_get(assets["SHA256SUMS.txt.pem"]))
+
+            res = subprocess.run([
+                cosign_exe, "verify-blob",
+                "--certificate-identity-regexp", r"^https://github\.com/Firojpaudel/veloce/",
+                "--certificate-oidc-issuer", "https://token.actions.githubusercontent.com",
+                "--signature", sig_path,
+                "--certificate", pem_path,
+                sums_path
+            ], capture_output=True, text=True)
+            if res.returncode != 0:
+                raise IOError(f"Sigstore Cosign verification failed: {res.stderr.strip()}")
+            logger.info("Verified SHA256SUMS.txt using Sigstore Cosign (keyless OIDC)")
+            return True
+
+    minisign_exe = shutil.which("minisign")
+    if minisign_exe and "SHA256SUMS.txt.minisig" in assets:
+        with tempfile.TemporaryDirectory() as td:
+            sums_path = os.path.join(td, "SHA256SUMS.txt")
+            sig_path = os.path.join(td, "SHA256SUMS.txt.minisig")
+            with open(sums_path, "wb") as f:
+                f.write(sums_bytes)
+            with open(sig_path, "wb") as f:
+                f.write(_get(assets["SHA256SUMS.txt.minisig"]))
+            pubkey = os.environ.get("VELOCE_MINISIGN_PUBKEY", "RWQXXXXXXXXX")
+            res = subprocess.run([
+                minisign_exe, "-Vm", sums_path, "-P", pubkey, "-x", sig_path
+            ], capture_output=True, text=True)
+            if res.returncode != 0:
+                raise IOError(f"Minisign verification failed: {res.stderr.strip()}")
+            logger.info("Verified SHA256SUMS.txt using Minisign")
+            return True
+
+    logger.debug("No signature verification tooling (cosign/minisign) on PATH; relying on GitHub HTTPS transport")
+    return False
+
+
 def _download_verified(name: str, assets: dict) -> str:
     sums_url = assets.get("SHA256SUMS.txt")
     if not sums_url:
         raise IOError("This release has no checksum list")
+    sums_data = _get(sums_url, timeout=30)
+    verify_checksum_signature(sums_data, assets)
+
     sums = {}
-    for line in _get(sums_url, timeout=30).decode().splitlines():
+    for line in sums_data.decode().splitlines():
         parts = line.split()
         if len(parts) == 2:
             sums[parts[1].lstrip("*")] = parts[0].lower()
