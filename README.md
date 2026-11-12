@@ -75,13 +75,13 @@ Lives in your tray at about 22 MB of memory, catches browser downloads, and upda
 
 | Windows 10/11 | macOS (Apple Silicon) | macOS (Intel) | Linux |
 | :---: | :---: | :---: | :---: |
-| [**veloce-windows-x64.exe**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-windows-x64.exe) | [**veloce-macos-arm64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-arm64) | [**veloce-macos-x86_64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-x86_64) | [**veloce-linux-x86_64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-linux-x86_64) |
+| [**Installer**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-setup-windows-x64.exe) · [portable zip](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-windows-x64-portable.zip) | [**veloce-macos-arm64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-arm64) | [**veloce-macos-x86_64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-x86_64) | [**veloce-linux-x86_64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-linux-x86_64) |
 
 Open it. Veloce settles into your system tray and opens its window.
 
 > [!WARNING]
 > **First launch may show a security prompt** because the app isn't code-signed yet — it's not about anything Veloce does.
-> - **Windows** (“Windows protected your PC”): click **More info → Run anyway**.
+> - **Windows**: if your browser says the file "isn't commonly downloaded", choose **Keep**; then at “Windows protected your PC” click **More info → Run anyway**. This happens once, for the installer only.
 > - **macOS** (“can't be opened”): right-click the file → **Open**, or run `xattr -d com.apple.quarantine veloce-macos-*`.
 
 > [!TIP]

@@ -247,6 +247,8 @@ chrome.webRequest.onHeadersReceived.addListener(
       if (map.has(url)) return;
       map.set(url, {
         url,
+        // Embedded players check where requests come from; remember the frame that asked for this stream
+        referer: details.initiator && details.initiator !== "null" ? `${details.initiator}/` : "",
         type: isHls ? "HLS" : isDash ? "DASH" : "File",
         contentType,
         size,
@@ -407,6 +409,12 @@ const handlers = {
     if (id == null || id < 0) return { streams: [] };
     const map = await loadTabStreams(id);
     return { streams: [...map.values()].sort((a, b) => b.timestamp - a.timestamp) };
+  },
+  async OPEN_PICKER_IN_TOP({ url, frameUrl }, sender) {
+    if (!sender.tab || sender.tab.id < 0) return {};
+    chrome.tabs.sendMessage(sender.tab.id, { type: "OPEN_MEDIA_PICKER", url, frameUrl, fromFrame: true }, { frameId: 0 },
+      () => void chrome.runtime.lastError);
+    return {};
   },
   async IS_MEDIA_SITE({ url }) {
     return { mediaSite: isMediaSite(url) };

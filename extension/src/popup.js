@@ -21,6 +21,9 @@ const ICONS = {
   settings: ["M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z", "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
   "app-window": ["M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "M2 9h20", "M6 6.5h.01", "M9 6.5h.01"],
   back: ["M15 18l-6-6 6-6"],
+  sun: ["M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "M12 2v2", "M12 20v2", "M4.93 4.93l1.41 1.41", "M17.66 17.66l1.41 1.41", "M2 12h2", "M20 12h2", "M6.34 17.66l-1.41 1.41", "M19.07 4.93l-1.41 1.41"],
+  moon: ["M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"],
+  monitor: ["M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "M8 21h8", "M12 17v4"],
   link: ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71", "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"],
   clipboard: ["M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2", "M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"],
   copy: ["M8 8h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z", "M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"],
@@ -599,11 +602,25 @@ bindSetting("set-cookies", "sendCookies", (el) => el.checked);
 bindSetting("set-notify", "notifyOnComplete", (el) => el.checked);
 $("set-connections").addEventListener("input", (e) => { $("out-connections").textContent = e.target.value; });
 
+const THEME_ORDER = ["system", "light", "dark"];
+const THEME_ICON = { system: "monitor", light: "sun", dark: "moon" };
+const THEME_LABEL = { system: "System", light: "Light", dark: "Dark" };
 function setThemeChoice(value) {
   applyTheme(value);
+  const tb = $("btn-theme");
+  tb.replaceChildren(icon(THEME_ICON[value] || "monitor", 16));
+  tb.title = `Theme: ${THEME_LABEL[value]} — click to change`;
+  tb.setAttribute("aria-label", `Theme: ${THEME_LABEL[value]}`);
+  tb.dataset.value = value;
   try { localStorage.setItem(THEME_KEY, value); } catch { /* storage blocked */ }
   document.querySelectorAll("#set-theme button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.themeValue === value)));
 }
+$("btn-theme").addEventListener("click", () => {
+  const next = THEME_ORDER[(THEME_ORDER.indexOf($("btn-theme").dataset.value || "system") + 1) % 3];
+  setThemeChoice(next);
+  chrome.storage.local.set({ theme: next });
+  toast(`Theme: ${THEME_LABEL[next]}`);
+});
 document.querySelectorAll("#set-theme button").forEach((b) => b.addEventListener("click", () => {
   setThemeChoice(b.dataset.themeValue);
   chrome.storage.local.set({ theme: b.dataset.themeValue });

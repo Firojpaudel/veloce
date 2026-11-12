@@ -56,7 +56,7 @@ UI_FILES = {
 
 
 def settings_payload() -> dict:
-    from . import autostart, updater
+    from . import autostart, updater, jsruntime
     try:
         auto = autostart.is_enabled()
     except Exception:
@@ -68,6 +68,7 @@ def settings_payload() -> dict:
         "auto_update": updater.enabled(),
         "media_support": MediaEngine.available(),
         "max_connections": MAX_CONNECTIONS,
+        **jsruntime.status(),
     }
 
 
@@ -723,8 +724,9 @@ def create_server(port: int = 9229, host: str = "127.0.0.1") -> ThreadingHTTPSer
     os.makedirs(DEFAULT_DOWNLOAD_DIR, exist_ok=True)
     httpd = ThreadingHTTPServer((host, port), RequestHandler)
     httpd.daemon_threads = True
-    from . import updater, media
+    from . import updater, media, jsruntime
     updater.start_background(is_idle=lambda: not STORE.media_stops, on_swap=media.reload_ytdlp)
+    jsruntime.ensure_in_background()
     logger.info(f"Veloce Engine {__version__} listening at http://{host}:{port}/ — saving to {DEFAULT_DOWNLOAD_DIR}")
     return httpd
 

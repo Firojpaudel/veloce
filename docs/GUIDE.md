@@ -24,7 +24,7 @@ The app is the engine that does the fast downloading. It runs quietly in your sy
 
    | Your computer | File |
    | :--- | :--- |
-   | Windows 10 or 11 | `veloce-windows-x64.exe` |
+   | Windows 10 or 11 | `veloce-setup-windows-x64.exe` (installer) — or `veloce-windows-x64-portable.zip` if you can't install apps |
    | Mac with Apple chip (M1 or newer) | `veloce-macos-arm64` |
    | Mac with Intel chip | `veloce-macos-x86_64` |
    | Linux (64-bit) | `veloce-linux-x86_64` |
@@ -33,13 +33,16 @@ The app is the engine that does the fast downloading. It runs quietly in your sy
    > Not sure which Mac you have? Apple menu → **About This Mac**. "Chip: Apple M…" means Apple Silicon; "Processor: Intel" means Intel.
 
 2. **Open it.**
-   - **Windows:** double-click the `.exe`.
+   - **Windows:** run the installer. It installs just for you (no admin password), adds Veloce to the Start menu, and offers **Start Veloce when I sign in** — leave it ticked. The portable zip runs from any folder: unzip it and open `Veloce.exe`.
    - **macOS:** in Terminal, run `chmod +x ~/Downloads/veloce-macos-*` once, then double-click it (or run it from Terminal).
    - **Linux:** `chmod +x veloce-linux-x86_64 && ./veloce-linux-x86_64`.
 
    > [!WARNING]
    > The first launch may show a security prompt because Veloce isn't code-signed yet. It's about the missing signature, not about anything the app does.
-   > - **Windows** ("Windows protected your PC"): **More info → Run anyway**.
+   > - **Windows, in the browser** ("isn't commonly downloaded" / "may be dangerous"): open the downloads list, then **⋯ → Keep** (Edge: **⋯ → Keep → Show more → Keep anyway**).
+   > - **Windows, when you run it** ("Windows protected your PC"): **More info → Run anyway**.
+   >
+   > You only see this once — for the installer. Everything after it, including updates to video support, happens inside the installed app.
    > - **macOS** ("can't be opened because it is from an unidentified developer"): right-click the file → **Open** → **Open**. Or run `xattr -d com.apple.quarantine ~/Downloads/veloce-macos-*`.
 
 3. **The Veloce window opens in your browser** at `http://127.0.0.1:9229`, and a Veloce icon appears in your system tray (top bar on macOS, bottom-right on Windows).

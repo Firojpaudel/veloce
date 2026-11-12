@@ -10,6 +10,7 @@ import json
 import shutil
 import logging
 import tempfile
+import threading
 import subprocess
 import contextlib
 from typing import Callable, Dict, Iterator, List, Optional
@@ -58,6 +59,56 @@ class MediaCancelled(Exception):
 
 
 PLAYLIST_ENTRY_LIMIT = 500
+
+
+class _YdlLog:
+    """Routes yt-dlp's own messages into engine.log, so failures on any machine can be diagnosed."""
+    _log = logging.getLogger("yt-dlp")
+
+    def debug(self, msg):
+        if not msg.startswith("[debug]"):
+            self._log.debug(msg)
+
+    def info(self, msg):
+        self._log.debug(msg)
+
+    def warning(self, msg):
+        self._log.warning(msg)
+
+    def error(self, msg):
+        self._log.error(msg)
+
+
+def _has_media_formats(info: dict) -> bool:
+    """True when yt-dlp found at least one real audio/video format (not just storyboard images)."""
+    if info.get("url") and not info.get("formats"):
+        return True
+    return any((f.get("vcodec") or "none") != "none" or (f.get("acodec") or "none") != "none"
+               for f in info.get("formats") or [])
+
+
+def friendly_media_error(err) -> str:
+    """Plain-language explanation for the common yt-dlp failures."""
+    text = str(err or "").replace("ERROR: ", "").strip()
+    low = text.lower()
+    if "requested format is not available" in low or "no video formats found" in low:
+        return ("The site didn't offer a downloadable version of this video. Veloce retried with other settings; "
+                "if it keeps happening, open Settings → Check for update.")
+    if "sign in to confirm" in low or "not a bot" in low:
+        return "YouTube asked to confirm you're not a bot. Sign in to YouTube in this browser and try again."
+    if "private video" in low or "members-only" in low or "join this channel" in low:
+        return "This video is private or members-only. Sign in to the site in this browser and try again."
+    if "age" in low and ("restricted" in low or "confirm your age" in low):
+        return "This video is age-restricted. Sign in to the site in this browser and try again."
+    if "unsupported url" in low:
+        return "This page isn't a supported video page. Play the video first, then use “Detected streams”."
+    if "drm" in low:
+        return "This video is DRM-protected, so it can't be downloaded."
+    if "http error 403" in low:
+        return "The site refused the download (HTTP 403). Reload the page and try again."
+    if "unable to download webpage" in low or "timed out" in low or "getaddrinfo" in low:
+        return "Couldn't reach the site. Check your internet connection and try again."
+    return text[:300] or "The video couldn't be downloaded."
 
 
 @contextlib.contextmanager
@@ -185,7 +236,8 @@ class MediaEngine:
 
     @staticmethod
     def _ydl_opts(http_headers: Dict[str, str], cookiefile: Optional[str], **extra) -> dict:
-        opts = {"quiet": True, "no_warnings": True, **extra}
+        from . import jsruntime
+        opts = {"quiet": True, "no_warnings": False, "logger": _YdlLog(), **jsruntime.ytdlp_options(), **extra}
         if http_headers:
             opts["http_headers"] = http_headers
         if cookiefile:
@@ -207,32 +259,46 @@ class MediaEngine:
         with cookie_file(cookies) as cookiefile:
             yt_dlp = ytdlp()
             if yt_dlp is not None:
-                try:
-                    opts = MediaEngine._ydl_opts(http_headers, cookiefile, skip_download=True,
-                                                 noplaylist=True, extract_flat="in_playlist",
-                                                 playlistend=PLAYLIST_ENTRY_LIMIT)
+                def extract(cookie_path, **extra):
+                    opts = MediaEngine._ydl_opts(http_headers, cookie_path, skip_download=True,
+                                                 playlistend=PLAYLIST_ENTRY_LIMIT, extract_flat="in_playlist", **extra)
                     with yt_dlp.YoutubeDL(opts) as ydl:
-                        data = ydl.extract_info(url, download=False)
-                except Exception as e:
-                    logger.warning(f"yt_dlp module probe failed: {e}")
+                        return ydl.extract_info(url, download=False)
 
+                # A video opened inside a playlist: look the playlist up at the same time, not afterwards.
+                # ("in_playlist", not True: True returns an unresolved link instead of the playlist itself.)
+                pl_box = {}
+                pl_thread = None
+                if looks_like_playlist(url):
+                    def expand():
+                        try:
+                            pl = extract(cookiefile, noplaylist=False)
+                            if pl and pl.get("_type") == "playlist":
+                                pl_box["v"] = MediaEngine._playlist_summary(pl)
+                        except Exception as e:
+                            logger.info(f"Playlist expansion failed: {e}")
+                    pl_thread = threading.Thread(target=expand, daemon=True)
+                    pl_thread.start()
+
+                attempts = [cookiefile, None] if cookiefile else [None]
+                for cookie_path in attempts:
+                    try:
+                        data = extract(cookie_path, noplaylist=True)
+                    except Exception as e:
+                        logger.warning(f"yt_dlp probe failed{' with cookies' if cookie_path else ''}: {e}")
+                        data = None
+                        continue
+                    if data and (data.get("_type") in ("playlist", "multi_video") or _has_media_formats(data)):
+                        break
+                    logger.warning("Probe returned no downloadable formats%s" % (" — retrying without cookies" if cookie_path else ""))
+
+                if pl_thread:
+                    pl_thread.join(timeout=120)
                 if data and data.get("_type") in ("playlist", "multi_video"):
                     # The URL *is* a playlist / channel / album page
                     playlist, data = MediaEngine._playlist_summary(data), None
-                elif looks_like_playlist(url):
-                    # A single video opened from inside a playlist: offer both
-                    try:
-                        # "in_playlist", not True: True would return an unresolved link to the playlist
-                        # (_type "url") instead of the playlist itself; entries still stay flat (fast).
-                        opts = MediaEngine._ydl_opts(http_headers, cookiefile, skip_download=True,
-                                                     noplaylist=False, extract_flat="in_playlist",
-                                                     playlistend=PLAYLIST_ENTRY_LIMIT)
-                        with yt_dlp.YoutubeDL(opts) as ydl:
-                            pl = ydl.extract_info(url, download=False)
-                        if pl and pl.get("_type") == "playlist":
-                            playlist = MediaEngine._playlist_summary(pl)
-                    except Exception as e:
-                        logger.info(f"Playlist expansion failed: {e}")
+                elif "v" in pl_box:
+                    playlist = pl_box["v"]
 
             if data is None and playlist is None and shutil.which("yt-dlp"):
                 cmd = ["yt-dlp", "--dump-json", "--no-playlist", "--no-warnings"]
@@ -437,6 +503,9 @@ class MediaEngine:
             if cookiefile:
                 base_opts["cookiefile"] = cookiefile
 
+            from . import jsruntime
+            base_opts.update(jsruntime.ytdlp_options())
+            base_opts.update({"no_warnings": False, "logger": _YdlLog()})
             primary = dict(base_opts)
             if extract_audio:
                 primary["format"] = "bestaudio/best"
@@ -452,10 +521,15 @@ class MediaEngine:
             else:
                 primary["format"] = "best[ext=mp4]/best"
 
-            fallback = dict(base_opts, format="bestaudio/best" if extract_audio else "best[ext=mp4]/best")
+            basic = "bestaudio/best" if extract_audio else ("bv*+ba/b" if has_ffmpeg else "best[ext=mp4]/best")
+            attempts = [primary]
+            if cookiefile:
+                # Signed-in sessions make YouTube use stricter clients; the same video often works without them.
+                attempts.append({k: v for k, v in primary.items() if k != "cookiefile"})
+            attempts.append({**{k: v for k, v in primary.items() if k != "cookiefile"}, "format": basic})
 
             last_error = None
-            for opts in (primary, fallback):
+            for opts in attempts:
                 try:
                     with yt_dlp.YoutubeDL(opts) as ydl:
                         ydl.download([url])
@@ -471,7 +545,7 @@ class MediaEngine:
                     last_error = e
                     logger.warning(f"yt_dlp download attempt failed: {e}")
             if not shutil.which("yt-dlp"):
-                raise RuntimeError(f"Media download failed: {last_error}")
+                raise RuntimeError(friendly_media_error(last_error))
 
         if not shutil.which("yt-dlp"):
             raise RuntimeError("yt-dlp is not installed. Install it with: pip install yt-dlp")

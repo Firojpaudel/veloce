@@ -212,7 +212,14 @@
   window.addEventListener("scroll", () => { if (badgeVideo) placeBadge(badgeVideo); }, { passive: true, capture: true });
 
   // ------------------------------------------------------------------ deciding what to download
+  const IN_FRAME = window.top !== window;
+
   async function openPickerForVideo(video) {
+    if (IN_FRAME) {
+      const src = video.currentSrc || video.src || video.querySelector("source")?.src || "";
+      send({ type: "OPEN_PICKER_IN_TOP", url: /^https?:/i.test(src) ? src : "", frameUrl: location.href });
+      return;
+    }
     const pageUrl = canonicalUrl(video);
     const title = cleanTitle(document.title);
     if (pageUrl) return openPicker({ url: pageUrl, title });
@@ -224,7 +231,7 @@
     const { streams = [] } = await send({ type: "GET_TAB_STREAMS" });
     const ranked = [...streams].sort((a, b) => rank(b) - rank(a));
     const best = ranked[0];
-    return openPicker({ url: best ? best.url : location.href, title, streams: ranked });
+    return openPicker({ url: best ? best.url : location.href, title, streams: ranked, referer: best?.referer });
   }
 
   function rank(s) {
@@ -245,7 +252,7 @@
     if (e.key === "Escape") { e.stopPropagation(); closePicker(); }
   }
 
-  async function openPicker({ url, title, streams = [], directFile = null }) {
+  async function openPicker({ url, title, streams = [], directFile = null, referer = null }) {
     closePicker();
     modalHost = h("div", { class: "veloce-root veloce-modal-root" });
     applyHostTheme(modalHost);
@@ -276,13 +283,13 @@
       return;
     }
 
-    const probe = await send({ type: "PROBE_MEDIA", url, pageUrl: location.href });
+    const probe = await send({ type: "PROBE_MEDIA", url, pageUrl: referer || location.href });
     if (!modalHost) return; // closed while loading
     if (!probe.ok) {
       body.replaceChildren(errorView(probe.error || "Couldn't read formats from this page."));
       return;
     }
-    renderFormats(body, probe.result, { url, title, streams, directFile });
+    renderFormats(body, probe.result, { url, title, streams, directFile, referer });
   }
 
   function hostLabel(url) {
@@ -353,7 +360,7 @@
     };
 
     const singleTitle = playlist && !videos.length ? playlist.title : title;
-    if (videos.length) addTab("video", "Video", "film", () => videoList(videos, ctx, singleTitle));
+    if (videos.length || ctx.directFile) addTab("video", "Video", "film", () => videoList(videos, ctx, singleTitle));
     if (videos.length || audios.length || ctx.directFile) addTab("audio", "Audio only", "music", () => audioList(audios, ctx, singleTitle));
     if (playlist && playlist.entries?.length) addTab("playlist", `Playlist · ${playlist.count}`, "list", () => playlistView(playlist, ctx));
     if (ctx.streams?.length > 1) addTab("streams", "Detected streams", "signal", () => streamList(ctx.streams, title));
@@ -388,7 +395,7 @@
 
   const mediaDownload = (ctx, title, extra) => send({
     type: "DOWNLOAD_MEDIA",
-    payload: { url: ctx.url, page_url: location.href, title, headers: { Referer: location.href }, ...extra },
+    payload: { url: ctx.url, page_url: location.href, title, headers: { Referer: ctx.referer || location.href }, ...extra },
   });
 
   function videoList(videos, ctx, title) {
@@ -506,15 +513,27 @@
       try { const u = new URL(s.url); name = u.pathname.split("/").pop() || u.hostname; } catch { /* keep */ }
       list.append(row({
         badge: s.type, name, sub: s.contentType || "stream", size: fmtBytes(s.size),
+        // The frame that requested a stream is the Referer its server expects (embedded players live on other domains)
         action: () => (s.type === "File"
-          ? send({ type: "DOWNLOAD_FILE", url: s.url, referrer: location.href })
-          : send({ type: "DOWNLOAD_MEDIA", payload: { url: s.url, page_url: location.href, title, format_id: "best", headers: { Referer: location.href } } })),
+          ? send({ type: "DOWNLOAD_FILE", url: s.url, referrer: s.referer || location.href })
+          : send({ type: "DOWNLOAD_MEDIA", payload: { url: s.url, page_url: location.href, title, format_id: "best", headers: { Referer: s.referer || location.href } } })),
       }));
     }
     return list;
   }
 
   chrome.runtime.onMessage.addListener((msg) => {
+    if (IN_FRAME) return; // only the main page shows the picker
+    if (msg?.type === "OPEN_MEDIA_PICKER" && msg.fromFrame) {
+      const title = cleanTitle(document.title);
+      if (msg.url) { openPicker({ url: msg.url, title, directFile: msg.url, referer: msg.frameUrl }); return; }
+      // blob: player inside the frame — use the streams the network sniffer saw for this tab
+      send({ type: "GET_TAB_STREAMS" }).then(({ streams = [] }) => {
+        const ranked = [...streams].sort((a, b) => rank(b) - rank(a));
+        openPicker({ url: ranked[0]?.url || msg.frameUrl, title, streams: ranked, referer: ranked[0]?.referer || msg.frameUrl });
+      });
+      return;
+    }
     if (msg?.type === "OPEN_MEDIA_PICKER") {
       const video = [...document.querySelectorAll("video")].find(isEligible);
       if (msg.url && msg.url !== location.href) openPicker({ url: msg.url, title: cleanTitle(document.title) });

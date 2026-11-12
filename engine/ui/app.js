@@ -31,6 +31,9 @@
     trash: ["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"],
     zap: ["M13 2 3 14h9l-1 8 10-12h-9l1-8z"],
     arrow: ["M5 12h14", "M12 5l7 7-7 7"],
+    sun: ["M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "M12 2v2", "M12 20v2", "M4.93 4.93l1.41 1.41", "M17.66 17.66l1.41 1.41", "M2 12h2", "M20 12h2", "M6.34 17.66l-1.41 1.41", "M19.07 4.93l-1.41 1.41"],
+  moon: ["M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"],
+  monitor: ["M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "M8 21h8", "M12 17v4"],
   };
   function icon(name, size = 16) {
     const ns = "http://www.w3.org/2000/svg";
@@ -743,7 +746,19 @@
     store.set("veloce-theme-choice", value);
     try { if (value === "system") localStorage.removeItem("veloce-theme"); else localStorage.setItem("veloce-theme", value); } catch { /* blocked */ }
     document.querySelectorAll("#set-theme button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.themeValue === value)));
+    const tb = $("btn-theme");
+    const label = { system: "System", light: "Light", dark: "Dark" }[value] || "System";
+    tb.replaceChildren(icon({ system: "monitor", light: "sun", dark: "moon" }[value] || "monitor", 16));
+    tb.title = `Theme: ${label} — click to change`;
+    tb.setAttribute("aria-label", `Theme: ${label}`);
+    tb.dataset.value = value;
   }
+  $("btn-theme").addEventListener("click", () => {
+    const order = ["system", "light", "dark"];
+    const next = order[(order.indexOf($("btn-theme").dataset.value || "system") + 1) % 3];
+    setTheme(next);
+    toast(`Theme: ${{ system: "System", light: "Light", dark: "Dark" }[next]}`);
+  });
   document.querySelectorAll("#set-theme button").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.themeValue)));
   setTheme(store.get("veloce-theme-choice", "system"));
 
