@@ -14,7 +14,7 @@
       <div class="brand">
         <img src="/ui/logo.png" alt="" width="22" height="22">
         <span class="brand-name">Veloce</span>
-        <span class="engine-dot" id="engine-dot" role="status" aria-label="Engine status"></span>
+        <button class="icon-btn rail-toggle" id="btn-sidebar" type="button" title="Collapse sidebar ([)" aria-label="Collapse sidebar" aria-expanded="true"><span data-icon="sidebar"></span></button>
       </div>
 
       <div class="quick">
@@ -39,7 +39,6 @@
 
       <div class="sidebar-foot">
         <button class="nav-item" type="button" data-filter="settings"><span data-icon="settings"></span><span>Settings</span></button>
-        <div class="engine-line" id="engine-text">Connecting…</div>
       </div>
     </aside>
 
@@ -56,9 +55,14 @@
             <input type="search" id="search" placeholder="Filter" aria-label="Filter downloads">
             <kbd>/</kbd>
           </label>
-          <button class="icon-btn" id="btn-theme" type="button" title="Theme: System" aria-label="Theme: System"></button>
           <button class="icon-btn" id="btn-folder" type="button" title="Open downloads folder" aria-label="Open downloads folder"><span data-icon="folder"></span></button>
           <button class="btn small ghost" id="btn-clear" type="button" title="Remove finished items from the list — files stay on disk">Clear finished</button>
+        </div>
+        <div class="topbar-end">
+          <span class="theme-wrap">
+            <button class="icon-btn" id="btn-theme" type="button" title="Theme: System" aria-label="Theme: System"></button>
+            <span class="engine-pill" id="engine-pill" role="status" title="Veloce engine status"><span class="dot" id="engine-dot"></span><span class="sr-only" id="engine-text">Connecting</span></span>
+          </span>
         </div>
       </header>
 
@@ -87,9 +91,11 @@
 
       <section class="settings" id="settings-view" hidden>
         <div class="settings-inner">
+
           <div class="group">
             <h2>Appearance</h2>
             <div class="setting">
+              <span class="setting-icon" data-icon="monitor"></span>
               <span class="setting-text"><strong>Theme</strong><span>Starts by matching your system</span></span>
               <div class="theme-seg" id="set-theme" role="radiogroup" aria-label="Theme">
                 <button type="button" role="radio" data-theme-value="system" aria-checked="true">System</button>
@@ -98,49 +104,57 @@
               </div>
             </div>
           </div>
+
+          <div class="group">
+            <h2>Downloads</h2>
+            <div class="setting">
+              <span class="setting-icon" data-icon="folder"></span>
+              <span class="setting-text"><strong>Save to</strong><span id="set-folder" class="mono"></span></span>
+              <button class="btn small" id="set-open-folder" type="button">Open</button>
+            </div>
+            <label class="setting column">
+              <span class="setting-row">
+                <span class="setting-icon" data-icon="zap"></span>
+                <span class="setting-text"><strong>Connections per file</strong><span>Veloce starts with one and adds more only while the download gets faster.</span></span>
+                <output id="out-connections" class="range-value"></output>
+              </span>
+              <span class="range"><input type="range" id="set-connections" min="1" max="32" aria-label="Maximum connections per file"></span>
+            </label>
+            <label class="setting">
+              <span class="setting-icon" data-icon="power"></span>
+              <span class="setting-text"><strong>Start at login</strong><span>Run quietly in the tray when you sign in</span></span>
+              <input type="checkbox" class="switch" id="set-autostart">
+            </label>
+          </div>
+
           <div class="group">
             <h2>Updates</h2>
             <div class="setting">
+              <span class="setting-icon" data-icon="refresh"></span>
               <span class="setting-text"><strong id="set-version">Veloce</strong><span id="set-update-text">Checking for updates…</span></span>
               <button class="btn small" id="set-update-app" type="button">Check now</button>
             </div>
             <div class="setting">
-              <span class="setting-text"><strong>Extension folder</strong><span>Load this folder in <code>chrome://extensions</code> once — Veloce keeps it updated: <span id="set-ext-dir" class="mono"></span></span></span>
+              <span class="setting-icon" data-icon="puzzle"></span>
+              <span class="setting-text"><strong>Browser extension</strong><span>Load this folder once at <code>chrome://extensions</code> (Developer mode → Load unpacked). Veloce keeps it up to date.</span>
+                <span class="path-field"><span id="set-ext-dir" class="mono"></span></span></span>
               <button class="btn small" id="set-copy-ext" type="button">Copy path</button>
             </div>
           </div>
-          <div class="group">
-            <h2>General</h2>
-            <label class="setting">
-              <span class="setting-text"><strong>Start at login</strong><span>Run quietly in the tray when you sign in</span></span>
-              <input type="checkbox" class="switch" id="set-autostart">
-            </label>
-            <div class="setting">
-              <span class="setting-text"><strong>Download folder</strong><span id="set-folder" class="mono"></span></span>
-              <button class="btn small" id="set-open-folder" type="button">Open</button>
-            </div>
-          </div>
-          <div class="group">
-            <h2>Speed</h2>
-            <label class="setting column">
-              <span class="setting-text"><strong>Maximum connections per file</strong><span>Veloce starts with one, measures, and adds more only while they make the download faster.</span></span>
-              <span class="range"><input type="range" id="set-connections" min="1" max="32"><output id="out-connections"></output></span>
-            </label>
-          </div>
+
           <div class="group">
             <h2>Video &amp; audio</h2>
             <div class="setting">
-              <span class="setting-text"><strong>yt-dlp</strong><span id="set-ytdlp"></span></span>
+              <span class="setting-icon" data-icon="film"></span>
+              <span class="setting-text"><strong>Video support <span class="tool-dot" id="tool-ytdlp"></span></strong><span id="set-ytdlp"></span></span>
               <button class="btn small" id="set-update" type="button">Check for update</button>
             </div>
             <div class="setting">
-              <span class="setting-text"><strong>ffmpeg</strong><span id="set-ffmpeg"></span></span>
+              <span class="setting-icon" data-icon="music"></span>
+              <span class="setting-text"><strong>Merging &amp; captions <span class="tool-dot" id="tool-ffmpeg"></span></strong><span id="set-ffmpeg"></span></span>
             </div>
           </div>
-          <div class="group">
-            <h2>Browser extension</h2>
-            <p class="group-text">Catches browser downloads and adds a Download button to videos on YouTube, TikTok, Instagram and more. Load the <code>extension</code> folder at <code>chrome://extensions</code> with Developer mode on.</p>
-          </div>
+
           <p class="about" id="about"></p>
         </div>
       </section>

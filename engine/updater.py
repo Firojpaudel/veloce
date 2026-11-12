@@ -144,7 +144,12 @@ def activate() -> Optional[str]:
         return None
     version, path = updates[0]
     if version <= bundled_version():
+        # The app update shipped a yt-dlp at least as new: downloaded copies are dead weight
+        for _, old in updates:
+            shutil.rmtree(old, ignore_errors=True)
         return None
+    for _, old in updates[1:]:
+        shutil.rmtree(old, ignore_errors=True)
     with _lock:
         if _hook is not None and _hook.root == path:
             return path

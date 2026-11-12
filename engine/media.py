@@ -61,6 +61,57 @@ class MediaCancelled(Exception):
 PLAYLIST_ENTRY_LIMIT = 500
 
 
+PREFERRED_LANGS = ("en", "en-US", "en-GB", "en-orig")
+
+
+def organize_captions(video_path: str) -> str:
+    """
+    For a video that has captions:
+      * moves the video and its .srt files into their own folder (<title>/), so they stay together;
+      * gives the main caption file the video's exact name (<title>.srt) — every player loads that
+        automatically — preferring English; other languages keep their tag (<title>.de.srt);
+      * marks that caption track "on by default" inside the file, so it shows without pressing CC.
+    Returns the video's new path.
+    """
+    folder, name = os.path.split(video_path)
+    root, ext = os.path.splitext(name)
+    subs = sorted(f for f in os.listdir(folder) if f.startswith(root + ".") and f.endswith(".srt"))
+    if not subs:
+        return video_path
+
+    def lang_of(f):
+        middle = f[len(root) + 1:-4]
+        return middle or "und"
+
+    langs = [lang_of(f) for f in subs]
+    main = next((i for i, l in enumerate(langs) if l in PREFERRED_LANGS or l.startswith("en")), 0)
+
+    target = os.path.join(folder, root)
+    if os.path.exists(target) and not os.path.isdir(target):
+        target += " (captions)"
+    os.makedirs(target, exist_ok=True)
+    new_video = os.path.join(target, name)
+    os.replace(video_path, new_video)
+    for i, f in enumerate(subs):
+        dest = f"{root}.srt" if i == main else f
+        os.replace(os.path.join(folder, f), os.path.join(target, dest))
+
+    # Make the main caption track the default inside the file (players then show it right away)
+    if MediaEngine._locate_ffmpeg() and ext.lower() in (".mp4", ".m4v", ".mkv"):
+        probe = subprocess.run(["ffmpeg", "-hide_banner", "-i", new_video], capture_output=True, text=True)
+        tracks = probe.stderr.count("Subtitle:")
+        if tracks:
+            out = os.path.join(target, f".{root}.tmp{ext}")
+            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", new_video, "-map", "0", "-c", "copy"]
+            for t in range(tracks):
+                cmd += [f"-disposition:s:{t}", "default" if t == min(main, tracks - 1) else "0"]
+            if subprocess.run(cmd + [out], capture_output=True).returncode == 0:
+                os.replace(out, new_video)
+            elif os.path.exists(out):
+                os.remove(out)
+    return new_video
+
+
 def attach_subtitles(video_path: str, urls: List[str], headers: Dict[str, str]):
     """
     Captions the page's player loaded as separate files (.vtt/.srt/.ass): saves each as .srt next to the
@@ -520,6 +571,11 @@ class MediaEngine:
                 attach_subtitles(path, subtitle_urls, MediaEngine._filter_headers(headers))
             except Exception as e:  # captions are a bonus; never fail the video over them
                 logger.warning(f"Couldn't attach captions: {e}")
+        if not extract_audio:
+            try:
+                path = organize_captions(path)
+            except Exception as e:
+                logger.warning(f"Couldn't organise captions: {e}")
         return path
 
     @staticmethod

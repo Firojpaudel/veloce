@@ -33,6 +33,10 @@
     arrow: ["M5 12h14", "M12 5l7 7-7 7"],
     sun: ["M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "M12 2v2", "M12 20v2", "M4.93 4.93l1.41 1.41", "M17.66 17.66l1.41 1.41", "M2 12h2", "M20 12h2", "M6.34 17.66l-1.41 1.41", "M19.07 4.93l-1.41 1.41"],
   moon: ["M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"],
+  sidebar: ["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M9 3v18"],
+  power: ["M12 2v10", "M18.4 6.6a9 9 0 1 1-12.77.04"],
+  refresh: ["M21 12a9 9 0 0 1-15.5 6.2L3 16", "M3 12a9 9 0 0 1 15.5-6.2L21 8", "M21 3v5h-5", "M3 21v-5h5"],
+  puzzle: ["M15.4 4.5a2.5 2.5 0 1 0-4.8 0H6a1 1 0 0 0-1 1v4.1a2.5 2.5 0 1 1 0 4.8V19a1 1 0 0 0 1 1h4.6a2.5 2.5 0 1 1 4.8 0H19a1 1 0 0 0 1-1v-4.6a2.5 2.5 0 1 0 0-4.8V5.5a1 1 0 0 0-1-1z"],
   monitor: ["M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "M8 21h8", "M12 17v4"],
   };
   function icon(name, size = 16) {
@@ -60,6 +64,30 @@
     return el;
   }
   document.querySelectorAll("[data-icon]").forEach((el) => el.prepend(icon(el.dataset.icon, 16)));
+
+  // ---------------------------------------------------------------- collapsible sidebar
+  const shell = document.querySelector(".shell");
+  const sideBtn = document.getElementById("btn-sidebar");
+  function setCollapsed(c) {
+    shell.classList.toggle("collapsed", c);
+    sideBtn.setAttribute("aria-expanded", String(!c));
+    sideBtn.title = c ? "Expand sidebar ([)" : "Collapse sidebar ([)";
+    sideBtn.setAttribute("aria-label", c ? "Expand sidebar" : "Collapse sidebar");
+    try { localStorage.setItem("veloce-sidebar", c ? "collapsed" : "open"); } catch {}
+  }
+  let startCollapsed = false;
+  try { startCollapsed = localStorage.getItem("veloce-sidebar") === "collapsed"; } catch {}
+  setCollapsed(startCollapsed || window.innerWidth < 760);
+  sideBtn.addEventListener("click", () => setCollapsed(!shell.classList.contains("collapsed")));
+  document.querySelectorAll(".sidebar .nav-item, .sidebar .quick-btn").forEach((b) => {
+    const label = b.querySelector("span:not([data-icon]):not(.nav-count)");
+    if (label && !b.title) b.title = label.textContent;
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "[" && !e.ctrlKey && !e.metaKey && !e.altKey && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || "")) {
+      setCollapsed(!shell.classList.contains("collapsed"));
+    }
+  });
 
   const isMac = /mac/i.test(navigator.userAgentData?.platform || navigator.platform || "");
   if (isMac) document.getElementById("palette-kbd").textContent = "⌘K";
@@ -189,11 +217,11 @@
   function setOnline(online) {
     if (state.online === online) return;
     state.online = online;
-    const dot = $("engine-dot");
-    dot.classList.toggle("online", online);
-    dot.classList.toggle("offline", !online);
-    dot.title = online ? "Engine running" : "Engine stopped";
-    $("engine-text").textContent = online ? `Engine running${state.settings ? ` · v${state.settings.version}` : ""}` : "Engine stopped";
+    const pill = $("engine-pill");
+    pill.classList.toggle("online", online);
+    pill.classList.toggle("offline", !online);
+    pill.title = online ? `Engine running${state.settings ? ` · v${state.settings.version}` : ""}` : "Engine stopped — start Veloce to resume downloads";
+    $("engine-text").textContent = online ? "Online" : "Offline";
   }
 
   // ---------------------------------------------------------------- list rendering
@@ -699,7 +727,9 @@
     $("set-ffmpeg").textContent = yt.ffmpeg ? "Installed — merges HD video with audio and converts to MP3"
       : "Not found — some HD formats and MP3 conversion are unavailable";
     $("about").textContent = `Veloce ${s.version} · MIT License · ${location.host}`;
-    $("engine-text").textContent = `Engine running · v${s.version}`;
+    $("tool-ytdlp").className = `tool-dot ${yt.yt_dlp ? "ok" : "missing"}`;
+    $("tool-ffmpeg").className = `tool-dot ${yt.ffmpeg ? "ok" : "missing"}`;
+    $("engine-pill").title = `Engine running · v${s.version}`;
     $("welcome").hidden = s.autostart || store.get("welcomeDismissed", false);
   }
 
