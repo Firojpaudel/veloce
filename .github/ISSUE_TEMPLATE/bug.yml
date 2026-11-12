@@ -59,3 +59,4 @@ body:
       label: Relevant logs or screenshots
       description: Paste any logs from ~/.veloce/engine.log or attach screenshots if applicable.
       render: shell
+

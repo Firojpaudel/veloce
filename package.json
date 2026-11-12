@@ -1,6 +1,6 @@
 {
   "name": "veloce",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "private": true,
   "description": "Adaptive multi-connection download accelerator with a browser extension and desktop dashboard",
   "scripts": {

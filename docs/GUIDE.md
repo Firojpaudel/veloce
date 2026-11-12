@@ -242,7 +242,7 @@ python3 main.py                               # the app
 | Video says "Setting up video support" | First run only: Veloce is downloading ffmpeg (joins picture and sound) and Deno (needed for YouTube), about 70 MB in total. It happens once, in the background, right after you first open the app. |
 | Only audio downloads work | ffmpeg couldn't be set up — usually no internet at first launch. Restart Veloce while online, or install ffmpeg yourself (section 8). |
 | "Single connection" on a file | That server doesn't allow split downloads. Veloce still downloads it, at normal speed. |
-| A download says **Failed** | The reason is shown under its name. Press **Try again**. While the app stays open, it continues from where it stopped; after a restart it starts over. |
+| A download says **Failed** | The reason is shown under its name. Press **Try again** — Veloce resumes from its `.veloce.part` file even after an app restart, or restarts cleanly if the server changed the file. |
 | Port 9229 already in use | Another copy of Veloce is running (check the tray), or another program uses that port. |
 | Where's the log? | `~/.veloce/engine.log` when started at login. |
 

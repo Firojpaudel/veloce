@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.3] - 2026-11-12
+## [2.0.4] - 2026-11-13
 
 ### Added
 - **Crash-Safe Atomic Downloads**:
@@ -37,3 +37,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Repo Hygiene**:
   - Single source of truth version verification script (`scripts/check_version.py`).
   - Added `CONTRIBUTING.md`, issue templates for bugs and features.
+

@@ -50,3 +50,4 @@ pip install -r requirements.txt
 2. Ensure all tests pass (`python -m unittest discover -s tests -v`) and `npm run check:js` passes.
 3. If changing version numbers, run `python scripts/check_version.py` to ensure consistency.
 4. Submit your pull request with a descriptive title and summary of changes.
+

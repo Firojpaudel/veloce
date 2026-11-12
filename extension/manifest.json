@@ -3,7 +3,7 @@
   "manifest_version": 3,
   "name": "Veloce Download Accelerator",
   "short_name": "Veloce",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA+OpI/ZsjQigJ55Vinm6tg0eTJtdvSDbOz5lhVw/vds/qc2Y1QWwmlZxxSfimFh8MEnNilM7icszlJnMlp0b9yOxl8V0B8X1qJhp6nWJogJUUqn5znhO4ddhkvPXUD26NSo2LqCngIeLadYlqqsu42zpvPR2pFYQSGthsTkBwcz+4IGntP10SV3PlvfI9r4QqE63my8AjtHhmiGBThXkAqJ0Nb2QMjwFg798ePb6Qd56QOL3bBOsQqoM2WSeNUsC73AI4hMGtaJGvHcv7pYlg6RkPX9T30mcarAx/oJK1we2TPvmYxDqL/XzmGgyrIx2htGczEUgcUl0QDLWQgzYq3QIDAQAB",
   "description": "Faster downloads with adaptive multi-connection transfers, plus one-click video and audio grabbing from YouTube, TikTok, Instagram and more.",
   "minimum_chrome_version": "116",
