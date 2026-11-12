@@ -224,6 +224,18 @@ def cleanup_leftovers():
     shutil.rmtree(extension_dir() + ".new", ignore_errors=True)
 
 
+_seen = {"extension": None}
+
+
+def saw_extension(version: str):
+    """The browser extension reports its version with each status call."""
+    if version and len(version) < 32:
+        _seen["extension"] = version
+
+
 def status() -> dict:
     ext = extension_dir() if os.path.isfile(os.path.join(extension_dir(), "manifest.json")) else bundled_extension_dir()
-    return {"extension_dir": ext, "extension_version": _manifest_version(ext) if ext else None}
+    available = _manifest_version(ext) if ext else None
+    running = _seen["extension"]
+    return {"extension_dir": ext, "extension_version": available, "extension_running": running,
+            "extension_outdated": bool(running and available and _ver(running) < _ver(available))}

@@ -178,6 +178,17 @@ async function refreshEngine() {
       onclick: () => chrome.tabs.create({ url: "http://127.0.0.1:9229/#settings" }) }));
   }
   if (was !== undefined && !!was !== !!state.engine) renderHere();
+  showStaleNotice();
+}
+
+async function showStaleNotice() {
+  const { staleFolder } = await chrome.storage.local.get("staleFolder");
+  const keys = document.querySelector(".foot-keys");
+  if (!staleFolder || !keys || keys.dataset.stale) return;
+  keys.dataset.stale = "1";
+  keys.replaceChildren(h("button", { class: "link", type: "button", text: `Extension ${staleFolder.version} is ready: load it once →`,
+    title: `Chrome loaded this extension from a different folder. Remove it, then Load unpacked: ${staleFolder.dir}`,
+    onclick: () => chrome.tabs.create({ url: "http://127.0.0.1:9229/#settings" }) }));
 }
 
 $("btn-retry-engine").addEventListener("click", async () => {

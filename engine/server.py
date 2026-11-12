@@ -14,7 +14,7 @@ import logging
 import threading
 import subprocess
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 from typing import Dict, Optional
 
 from .version import __version__
@@ -53,6 +53,18 @@ UI_FILES = {
     "theme.js": "text/javascript; charset=utf-8",
     "logo.png": "image/png",
 }
+
+
+_SHARE = None
+
+
+def share():
+    """Home-network sharing of the downloads folder (always starts off)."""
+    global _SHARE
+    if _SHARE is None:
+        from .share import Share
+        _SHARE = Share(DEFAULT_DOWNLOAD_DIR)
+    return _SHARE
 
 
 def _update_summary() -> dict:
@@ -639,6 +651,10 @@ class RequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/status":
+            from . import app_update
+            ext = parse_qs(urlparse(self.path).query).get("ext", [""])[0]
+            if ext:
+                app_update.saw_extension(ext)
             self._send_json(200, {
                 "status": "ok",
                 "name": "Veloce Engine",
@@ -647,6 +663,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 "media_support": MediaEngine.available(),
                 **_update_summary(),
             })
+        elif path == "/api/share":
+            self._send_json(200, share().status())
         elif path == "/api/tasks":
             self._send_json(200, {"tasks": STORE.list_tasks()})
         else:
@@ -801,6 +819,23 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         if path == "/api/tasks/clear-completed":
             self._send_json(200, {"success": True, "cleared": STORE.clear_completed()})
+            return
+
+        if path == "/api/share":
+            # Only the dashboard on this computer may turn sharing on or off (not extensions or web pages)
+            origin = (self.headers.get("Origin") or "").lower()
+            port = self.server.server_address[1]
+            if origin not in (f"http://127.0.0.1:{port}", f"http://localhost:{port}"):
+                self._send_json(403, {"error": "Sharing can only be changed from the Veloce app"})
+                return
+            try:
+                if payload.get("new_code"):
+                    status = share().new_code()
+                else:
+                    status = share().start() if payload.get("enabled") else share().stop()
+            except OSError as e:
+                raise BadRequest(f"Couldn't start sharing: {e}")
+            self._send_json(200, status)
             return
 
         if path == "/api/open-folder":

@@ -141,6 +141,7 @@ The engine needs only Python 3.10+. Install `ffmpeg` too for HD video (it merges
 | **Video & audio** | Every quality up to 4K, audio as MP3, M4A, Opus or FLAC, whole playlists queued three at a time. Login-only videos work through your browser session. |
 | **Browser integration** | Catches normal downloads with Chrome's own filename and login, and hands them back to Chrome whenever the app is off — nothing is lost. Right-click any link → *Download with Veloce*. |
 | **A real app** | Search, categories, a command palette (<kbd>Ctrl</kbd> <kbd>K</kbd>), paste-anywhere, keyboard shortcuts, light & dark themes, pause / resume / retry, history that survives restarts. |
+| **Stream to your devices** | Turn on *Settings → Home network* and watch or download anything in your Veloce folder from a phone or laptop on the same Wi-Fi, with seeking and captions. Protected by an access code; off every time Veloce starts. |
 | **Safe by default** | Never overwrites a file, never writes outside your Veloce folder, detects servers that would corrupt a split download. |
 
 ## How it works
@@ -170,7 +171,9 @@ Videos are resolved by [yt-dlp](https://github.com/yt-dlp/yt-dlp) in a short-liv
 
 ## Benchmarks
 
-<img src="assets/benchmark-light.svg" alt="Throughput by source: Veloce 1.1 versus Veloce 1.0 and a single stream" width="760">
+<p align="center">
+  <img src="assets/benchmark-light.svg" alt="Throughput by source: Veloce 1.1 versus Veloce 1.0 and a single stream" width="760">
+</p>
 
 - **Throttled servers:** ~12× a single stream on Internet Archive.
 - **Fast CDNs:** Veloce 1.0 was ~2× *slower* than a single stream on Kernel.org; 1.1 matches it.
@@ -222,9 +225,18 @@ From MDM's README and source, November 2026. The two haven't been benchmarked on
 ## Privacy & security
 
 - **Local only.** The engine listens on `127.0.0.1` and accepts requests only from the Veloce extension and its own window — never from websites.
+- **Home-network sharing is opt-in.** It is off every time Veloce starts. When you turn it on, a separate read-only server shares only your Veloce downloads folder (no hidden or unfinished files, nothing outside it) and asks each device for a 6-character code. After 5 wrong codes a device waits 1 min, then 5, 15 and 60. *New code* or turning it off signs every device out.
 - **Your logins stay yours.** Site cookies go only to the app on your computer, are dropped if a download redirects to another site, and are never saved.
 - **Contained.** Downloads can only be saved inside your Veloce folder; only `http(s)` links are accepted.
 - **Verified updates.** yt-dlp updates are checked against PyPI's published SHA-256 before use.
+
+## Watch on your phone or laptop
+
+1. On the computer running Veloce, open **Settings → Home network** and turn on **Stream to your devices**.
+2. On a phone or laptop on the same Wi-Fi, open the address shown there (for example `http://192.168.1.20:9230`).
+3. Enter the 6-character access code. That device stays signed in until you turn sharing off or make a new code.
+
+Videos play in the browser with seeking and their captions; anything else can be downloaded. Windows asks once whether to allow Veloce on private networks: allow it. Formats a phone browser can't play (some MKV files) can still be downloaded and opened in a player such as VLC.
 
 ## FAQ
 

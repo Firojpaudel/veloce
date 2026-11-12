@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 620">
+<g transform="translate(70 35) scale(.55)">
+
+<g fill="#2563eb">
+  <path d="M120 150 H238 L474 560 L413 666 Z"/>
+  <path d="M286 150 H404 L554 440 L493 546 Z"/>
+  <path d="M452 150 H570 L634 315 L573 421 Z"/>
+  <path d="M570 150 H870 L590 850 H452 L740 150 Z"/>
+</g>
+
+</g>
+<text x="650" y="410" fill="#f3f3f1" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif"
+font-size="340" font-weight="650" letter-spacing="-13">Veloce</text>
+</svg>

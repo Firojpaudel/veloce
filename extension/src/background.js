@@ -64,7 +64,7 @@ async function api(path, { method = "GET", body, timeout = 5000 } = {}) {
 
 async function engineStatus(timeout = 900) {
   try {
-    const status = await api("/status", { timeout });
+    const status = await api(`/status?ext=${encodeURIComponent(chrome.runtime.getManifest().version)}`, { timeout });
     maybeSelfUpdate(status);
     return status;
   } catch {
@@ -84,9 +84,17 @@ function newer(a, b) {
 }
 async function maybeSelfUpdate(status) {
   const available = status?.extension_version;
-  if (!available || !newer(available, chrome.runtime.getManifest().version)) return;
+  if (!available || !newer(available, chrome.runtime.getManifest().version)) {
+    chrome.storage.local.remove("staleFolder");
+    return;
+  }
   const { reloadedFor } = await chrome.storage.local.get("reloadedFor");
-  if (reloadedFor === available) return; // loaded from a folder the app doesn't manage: don't loop
+  if (reloadedFor === available) {
+    // Reloading didn't pick up the new version: Chrome loaded this extension from another folder.
+    // The popup and the app tell the user which folder to load once.
+    await chrome.storage.local.set({ staleFolder: { version: available, dir: status.extension_dir || "" } });
+    return;
+  }
   await chrome.storage.local.set({ reloadedFor: available });
   chrome.runtime.reload();
 }

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f3f3f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)">
+  <title>Veloce</title>
+  <link rel="icon" href="/logo.png">
+  <style>
+    :root {
+      --bg: #f3f3f1; --panel: #fafaf8; --line: #e2e1dd; --hover: rgba(28, 27, 24, 0.05);
+      --text: #1d1c1a; --text-2: #4f4d48; --text-3: #6f6c66; --accent: #2563eb; --red: #c62828;
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #171717; --panel: #212121; --line: rgba(255, 255, 255, 0.08); --hover: rgba(255, 255, 255, 0.05);
+        --text: #ececec; --text-2: #b4b4b4; --text-3: #9b9b9b; --accent: #4f8cff; --red: #ff7676;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      min-height: 100dvh; background: var(--bg); color: var(--text); font: 15px/1.5 var(--font);
+      -webkit-font-smoothing: antialiased; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    }
+    button, input { font: inherit; color: inherit; }
+    [hidden] { display: none !important; }
+    ::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+    svg { display: block; flex: none; }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px 40px; }
+
+    header { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 14px 0 10px; }
+    .top { display: flex; align-items: center; gap: 10px; }
+    .top img { width: 26px; height: 26px; border-radius: 7px; }
+    .top strong { font-size: 17px; letter-spacing: -0.02em; }
+    .top span { margin-left: auto; font-size: 13px; color: var(--text-3); }
+    .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-top: 12px; font-size: 14px; }
+    .crumbs button { all: unset; cursor: pointer; padding: 3px 6px; border-radius: 6px; color: var(--text-2); }
+    .crumbs button:last-child { color: var(--text); font-weight: 600; }
+    .crumbs button:focus-visible { outline: 2px solid var(--accent); }
+    .crumbs i { color: var(--text-3); font-style: normal; }
+    .find {
+      display: flex; align-items: center; gap: 8px; margin-top: 10px; height: 42px; padding: 0 12px;
+      border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text-3);
+    }
+    .find:focus-within { border-color: var(--accent); }
+    .find input { all: unset; flex: 1; min-width: 0; color: var(--text); caret-color: var(--accent); }
+
+    .list { display: flex; flex-direction: column; margin-top: 6px; }
+    .item {
+      all: unset; cursor: pointer; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px;
+      border-radius: 10px; -webkit-tap-highlight-color: transparent;
+    }
+    .item:hover, .item:active { background: var(--hover); }
+    .item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .tile {
+      width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex: none;
+      background: var(--panel); border: 1px solid var(--line); color: var(--text-2);
+    }
+    .tile[data-kind="video"] { color: #7c3aed; } .tile[data-kind="audio"] { color: #db2777; }
+    .tile[data-kind="image"] { color: #15803d; } .tile[data-kind="folder"] { color: var(--accent); }
+    @media (prefers-color-scheme: dark) {
+      .tile[data-kind="video"] { color: #b39cff; } .tile[data-kind="audio"] { color: #ff8cc6; } .tile[data-kind="image"] { color: #6ee59a; }
+    }
+    .text { min-width: 0; flex: 1; }
+    .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .meta { font-size: 13px; color: var(--text-3); }
+    .chev { color: var(--text-3); }
+
+    .empty { text-align: center; padding: 72px 16px; color: var(--text-2); }
+    .empty strong { display: block; color: var(--text); font-size: 16px; margin-bottom: 4px; }
+
+    /* player */
+    .player { margin-top: 8px; }
+    .stage { border-radius: 12px; overflow: hidden; background: #000; }
+    .stage video, .stage img { display: block; width: 100%; max-height: 72dvh; background: #000; object-fit: contain; }
+    .stage audio { display: block; width: 100%; }
+    .stage.audio { background: var(--panel); border: 1px solid var(--line); padding: 28px 16px; }
+    .player h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin-top: 14px; overflow-wrap: anywhere; }
+    .player .meta { margin-top: 2px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .btn {
+      all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px;
+      border-radius: 10px; border: 1px solid var(--line); background: var(--panel); font-weight: 500;
+    }
+    .btn.primary { background: #2563eb; border-color: transparent; color: #fff; }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .note { margin-top: 10px; font-size: 13px; color: var(--text-3); }
+
+    /* code entry */
+    .gate { min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; }
+    .gate-card { width: 100%; max-width: 360px; text-align: center; }
+    .gate-card img { width: 52px; height: 52px; border-radius: 13px; }
+    .gate-card h1 { font-size: 21px; letter-spacing: -0.02em; margin-top: 16px; }
+    .gate-card p { color: var(--text-2); margin-top: 6px; }
+    .code {
+      all: unset; display: block; width: 100%; margin-top: 22px; height: 58px; border-radius: 12px; text-align: center;
+      border: 1px solid var(--line); background: var(--panel); font: 600 26px/58px ui-monospace, "SF Mono", Menlo, monospace;
+      letter-spacing: 0.32em; text-transform: uppercase; caret-color: var(--accent);
+    }
+    .code:focus { border-color: var(--accent); }
+    .gate-card .btn { width: 100%; justify-content: center; margin-top: 12px; box-sizing: border-box; }
+    .err { color: var(--red); font-size: 14px; margin-top: 10px; min-height: 21px; }
+  </style>
+</head>
+<body>
+  <section class="gate" id="gate" hidden>
+    <form class="gate-card" id="gate-form" autocomplete="off">
+      <img src="/logo.png" alt="">
+      <h1>Open Veloce</h1>
+      <p>Enter the access code shown in Veloce on your computer, under Settings → Home network.</p>
+      <input class="code" id="code" inputmode="text" maxlength="6" autocapitalize="characters" spellcheck="false"
+             aria-label="Access code" placeholder="······">
+      <button class="btn primary" type="submit">Continue</button>
+      <div class="err" id="gate-err" role="alert"></div>
+    </form>
+  </section>
+
+  <div class="wrap" id="app" hidden>
+    <header>
+      <div class="top"><img src="/logo.png" alt=""><strong>Veloce</strong><span>Your downloads</span></div>
+      <nav class="crumbs" id="crumbs" aria-label="Folders"></nav>
+      <label class="find" id="find"><span data-i="search"></span><input id="filter" type="search" placeholder="Search this folder" aria-label="Search this folder"></label>
+    </header>
+    <main id="view"></main>
+  </div>
+
+  <script>
+  (() => {
+    const P = {
+      search: ["M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z", "M21 21l-4.3-4.3"],
+      folder: ["M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"],
+      video: ["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M7 3v18", "M17 3v18", "M3 12h18", "M3 7.5h4", "M3 16.5h4", "M17 7.5h4", "M17 16.5h4"],
+      audio: ["M9 18V5l12-2v13", "M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0z", "M21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"],
+      image: ["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z", "M21 15l-5-5L5 21"],
+      file: ["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z", "M14 2v6h6"],
+      chev: ["M9 18l6-6-6-6"],
+      download: ["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"],
+      back: ["M15 18l-6-6 6-6"],
+    };
+    function icon(name, size = 20) {
+      const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+      for (const [k, v] of Object.entries({ viewBox: "0 0 24 24", width: size, height: size, fill: "none", stroke: "currentColor",
+        "stroke-width": 1.75, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) svg.setAttribute(k, v);
+      for (const d of P[name] || P.file) { const p = document.createElementNS(ns, "path"); p.setAttribute("d", d); svg.append(p); }
+      return svg;
+    }
+    function h(tag, props = {}, ...kids) {
+      const el = document.createElement(tag);
+      for (const [k, v] of Object.entries(props)) {
+        if (v == null || v === false) continue;
+        if (k === "class") el.className = v; else if (k === "text") el.textContent = v;
+        else if (k.startsWith("on")) el.addEventListener(k.slice(2), v); else el.setAttribute(k, v === true ? "" : v);
+      }
+      for (const c of kids.flat()) if (c != null && c !== false) el.append(c);
+      return el;
+    }
+    document.querySelectorAll("[data-i]").forEach((el) => el.replaceWith(icon(el.dataset.i, 18)));
+    const $ = (id) => document.getElementById(id);
+    const fileUrl = (path) => "/f/" + path.split("/").map(encodeURIComponent).join("/");
+    const size = (b) => { if (b == null) return ""; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return `${b.toFixed(i && b < 10 ? 1 : 0)} ${u[i]}`; };
+    const when = (t) => new Date(t * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+
+    let entries = [], current = "";
+
+    async function get(url) {
+      const r = await fetch(url, { credentials: "same-origin" });
+      if (r.status === 401) { showGate(); throw new Error("locked"); }
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "Something went wrong");
+      return r.json();
+    }
+
+    // ------------------------------------------------------------------ access code
+    function showGate(message = "") {
+      $("app").hidden = true; $("gate").hidden = false; $("gate-err").textContent = message;
+      setTimeout(() => $("code").focus(), 50);
+    }
+    function lockFor(seconds) {
+      const input = $("code"), until = Date.now() + seconds * 1000;
+      input.disabled = true;
+      const tick = () => {
+        const left = Math.ceil((until - Date.now()) / 1000);
+        if (left <= 0) { input.disabled = false; $("gate-err").textContent = ""; input.focus(); return; }
+        $("gate-err").textContent = `Too many wrong codes. Try again in ${left >= 60 ? Math.ceil(left / 60) + " min" : left + " s"}.`;
+        setTimeout(tick, 1000);
+      };
+      tick();
+    }
+    $("code").addEventListener("input", (e) => {
+      e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (e.target.value.length === 6) $("gate-form").requestSubmit();
+    });
+    $("gate-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const r = await fetch(`/auth?code=${encodeURIComponent($("code").value)}`, { credentials: "same-origin" });
+      if (r.ok) { $("gate").hidden = true; route(); return; }
+      $("code").value = "";
+      const data = await r.json().catch(() => ({}));
+      $("gate-err").textContent = data.error || "That code isn't right";
+      if (data.wait) lockFor(data.wait);
+    });
+
+    // ------------------------------------------------------------------ browsing
+    function crumbs(path, last) {
+      const parts = path ? path.split("/") : [];
+      const nodes = [h("button", { type: "button", text: "Downloads", onclick: () => go("") })];
+      parts.forEach((p, i) => {
+        nodes.push(h("i", { text: "/" }), h("button", { type: "button", text: p, onclick: () => go(parts.slice(0, i + 1).join("/")) }));
+      });
+      if (last) nodes.push(h("i", { text: "/" }), h("button", { type: "button", text: last }));
+      $("crumbs").replaceChildren(...nodes);
+    }
+    async function showFolder(path) {
+      const data = await get(`/api/list?path=${encodeURIComponent(path)}`);
+      entries = data.entries; current = data.path;
+      $("app").hidden = false; $("find").hidden = false; $("filter").value = "";
+      crumbs(current);
+      drawList();
+      document.title = current ? `${current.split("/").pop()} · Veloce` : "Veloce";
+    }
+    function drawList() {
+      const q = $("filter").value.trim().toLowerCase();
+      const shown = entries.filter((e) => !q || e.name.toLowerCase().includes(q));
+      if (!shown.length) {
+        $("view").replaceChildren(h("div", { class: "empty" },
+          h("strong", { text: q ? `Nothing matches “${$("filter").value.trim()}”` : "This folder is empty" }),
+          h("span", { text: q ? "Try another word." : "Downloads you make with Veloce show up here." })));
+        return;
+      }
+      $("view").replaceChildren(h("div", { class: "list", role: "list" }, shown.map((e) => {
+        const kind = e.type === "folder" ? "folder" : e.kind;
+        const meta = e.type === "folder" ? "Folder" : [size(e.size), when(e.mtime), e.captions?.length ? "Captions" : ""].filter(Boolean).join(" · ");
+        return h("button", { class: "item", type: "button", role: "listitem", onclick: () => open(e) },
+          h("span", { class: "tile", "data-kind": kind }, icon(kind)),
+          h("span", { class: "text" }, h("div", { class: "name", text: e.name }), h("div", { class: "meta", text: meta })),
+          h("span", { class: "chev" }, icon("chev", 18)));
+      })));
+    }
+    $("filter").addEventListener("input", drawList);
+
+    function open(e) {
+      if (e.type === "folder") return go(e.path);
+      location.hash = "#/view/" + encodeURIComponent(e.path);
+    }
+
+    async function showFile(path) {
+      const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+      if (current !== folder || !entries.length) await showFolder(folder);
+      const e = entries.find((x) => x.path === path);
+      if (!e) return go(folder);
+      $("find").hidden = true;
+      crumbs(folder, e.name);
+      document.title = `${e.name} · Veloce`;
+      const src = fileUrl(e.path);
+      let stage;
+      if (e.kind === "video") {
+        const v = h("video", { controls: true, playsinline: true, preload: "metadata", src });
+        (e.captions || []).forEach((c, i) => v.append(h("track", { kind: "subtitles", src: c.url, srclang: c.lang, label: c.label, default: i === 0 })));
+        stage = h("div", { class: "stage" }, v);
+      } else if (e.kind === "audio") {
+        stage = h("div", { class: "stage audio" }, h("audio", { controls: true, preload: "metadata", src }));
+      } else if (e.kind === "image") {
+        stage = h("div", { class: "stage" }, h("img", { src, alt: e.name }));
+      }
+      const media = stage?.querySelector("video, audio");
+      const note = h("p", { class: "note", hidden: true, text: "This browser can't play this format. Download it and open it in a video player like VLC." });
+      media?.addEventListener("error", () => { note.hidden = false; });
+      $("view").replaceChildren(h("div", { class: "player" },
+        stage,
+        h("h1", { text: e.name }),
+        h("div", { class: "meta", text: [size(e.size), when(e.mtime)].join(" · ") }),
+        h("div", { class: "actions" },
+          h("a", { class: "btn primary", href: src + "?download=1", download: e.name }, icon("download", 18), "Download"),
+          h("button", { class: "btn", type: "button", onclick: () => go(folder) }, icon("back", 18), "Back")),
+        stage ? note : h("p", { class: "note", text: "Download this file to open it on this device." })));
+      media?.focus();
+    }
+
+    // ------------------------------------------------------------------ routing (#/folder/... and #/view/...)
+    function go(path) { location.hash = path ? "#/folder/" + encodeURIComponent(path) : "#/"; }
+    async function route() {
+      const hash = location.hash;
+      try {
+        if (hash.startsWith("#/view/")) await showFile(decodeURIComponent(hash.slice(7)));
+        else await showFolder(hash.startsWith("#/folder/") ? decodeURIComponent(hash.slice(9)) : "");
+        window.scrollTo(0, 0);
+      } catch (err) {
+        if (err.message !== "locked") $("view").replaceChildren(h("div", { class: "empty" }, h("strong", { text: "Couldn't open this" }), h("span", { text: err.message })));
+      }
+    }
+    addEventListener("hashchange", route);
+    route();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
+<rect x="0" y="0" width="1000" height="1000" rx="220" fill="#171717"/>
+
+<g fill="#2563eb">
+  <path d="M120 150 H238 L474 560 L413 666 Z"/>
+  <path d="M286 150 H404 L554 440 L493 546 Z"/>
+  <path d="M452 150 H570 L634 315 L573 421 Z"/>
+  <path d="M570 150 H870 L590 850 H452 L740 150 Z"/>
+</g>
+
+</svg>

@@ -33,6 +33,7 @@
     arrow: ["M5 12h14", "M12 5l7 7-7 7"],
     sun: ["M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "M12 2v2", "M12 20v2", "M4.93 4.93l1.41 1.41", "M17.66 17.66l1.41 1.41", "M2 12h2", "M20 12h2", "M6.34 17.66l-1.41 1.41", "M19.07 4.93l-1.41 1.41"],
   moon: ["M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"],
+  wifi: ["M5 12.55a11 11 0 0 1 14.08 0", "M1.42 9a16 16 0 0 1 21.16 0", "M8.53 16.11a6 6 0 0 1 6.95 0", "M12 20h.01"],
   sidebar: ["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M9 3v18"],
   power: ["M12 2v10", "M18.4 6.6a9 9 0 1 1-12.77.04"],
   refresh: ["M21 12a9 9 0 0 1-15.5 6.2L3 16", "M3 12a9 9 0 0 1 15.5-6.2L21 8", "M21 3v5h-5", "M3 21v-5h5"],
@@ -132,6 +133,30 @@
     return hh ? `${hh}:${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}` : `${mm}:${String(ss).padStart(2, "0")}`;
   };
   const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+
+  // ---------------------------------------------------------------- search: every word must match name, site or type
+  const tokens = (q) => q.toLowerCase().split(/\s+/).filter(Boolean);
+  function haystack(t) {
+    return [t.filename, t.title, hostOf(t.url || ""), typeOf(t), TITLES[stateOf(t.status)] || ""].join(" ").toLowerCase();
+  }
+  const searchHit = (t, words) => !words.length || words.every((w) => haystack(t).includes(w));
+  /** Text with matching words wrapped in <mark> — built from text nodes only, never HTML. */
+  function highlighted(text, words) {
+    text = text || "";
+    if (!words.length) return [text];
+    const lower = text.toLowerCase();
+    const marks = new Array(text.length).fill(false);
+    for (const w of words) for (let i = lower.indexOf(w); i !== -1; i = lower.indexOf(w, i + 1)) marks.fill(true, i, i + w.length);
+    const out = [];
+    let i = 0;
+    while (i < text.length) {
+      let j = i;
+      while (j < text.length && marks[j] === marks[i]) j++;
+      out.push(marks[i] ? h("mark", { text: text.slice(i, j) }) : text.slice(i, j));
+      i = j;
+    }
+    return out;
+  }
   const isHttp = (u) => /^https?:\/\/\S+$/i.test((u || "").trim());
   const store = {
     get: (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -250,8 +275,9 @@
     $("live-text").textContent = `${running.length} downloading · ${fmtBytes(speed)}/s`;
     document.title = running.length ? `↓ ${fmtBytes(speed)}/s · Veloce` : "Veloce";
 
-    const q = state.search.toLowerCase();
-    const visible = state.tasks.filter((t) => matches(t, state.filter) && (!q || (t.filename || t.url || "").toLowerCase().includes(q)));
+    const words = tokens(state.search);
+    const q = words.length > 0;
+    const visible = state.tasks.filter((t) => matches(t, state.filter) && searchHit(t, words));
     $("view-count").textContent = visible.length ? String(visible.length) : "";
 
     if (state.online === false) {
@@ -261,8 +287,7 @@
     }
     if (!visible.length) {
       rows.clear();
-      list.replaceChildren(q
-        ? emptyView("search", "No matches", `Nothing in ${TITLES[state.filter].toLowerCase()} matches “${state.search}”.`)
+      list.replaceChildren(q ? noMatchesView(words)
         : state.filter === "all" ? emptyView("download", "No downloads yet", "Paste a link anywhere in this window, or press Download on any video with the browser extension.", true)
           : emptyView(TYPE_ICON[state.filter] || "inbox", `Nothing in ${TITLES[state.filter].toLowerCase()}`, ""));
       return;
@@ -288,6 +313,21 @@
     // Only touch the DOM order when it actually changed (keeps hover/focus stable during live updates)
     const current = [...list.children];
     if (current.length !== desired.length || current.some((el, i) => el !== desired[i])) list.replaceChildren(...desired);
+  }
+
+  function noMatchesView(words) {
+    const elsewhere = state.filter !== "all" ? state.tasks.filter((t) => searchHit(t, words)).length : 0;
+    const link = isHttp(state.search) ? state.search : null;
+    const where = state.filter === "all" ? "your downloads" : TITLES[state.filter].toLowerCase();
+    const clear = () => { $("search").value = ""; state.search = ""; syncSearch(); render(); $("search").focus(); };
+    return h("div", { class: "empty no-match" },
+      h("div", { class: "empty-art search-art" }, icon("search", 22), h("span", { class: "art-x" }, icon("x", 10))),
+      h("strong", {}, "No results for ", h("q", { text: state.search })),
+      h("span", { text: link ? "That looks like a link. Download it instead?" : `Nothing in ${where} matches. Try fewer or different words, or search by site (e.g. “youtube”) or type (e.g. “video”).` }),
+      h("div", { class: "empty-actions" },
+        link ? h("button", { class: "btn primary small", type: "button", onclick: () => { clear(); openAdd(link); } }, icon("download", 14), "Download link") : null,
+        elsewhere ? h("button", { class: "btn small", type: "button", onclick: () => go("all") }, `Show ${elsewhere} in All downloads`) : null,
+        h("button", { class: "btn small ghost", type: "button", onclick: clear }, "Clear search", h("kbd", { text: "Esc" }))));
   }
 
   function emptyView(iconName, title, text, withKeys = false) {
@@ -335,7 +375,7 @@
     r.el.classList.toggle("selected", state.selected === t.id);
     const type = typeOf(t);
     if (r.tile.dataset.type !== type) { r.tile.dataset.type = type; r.tile.replaceChildren(icon(TYPE_ICON[type], 15)); }
-    r.name.textContent = t.filename || t.title || t.url;
+    r.name.replaceChildren(...highlighted(t.filename || t.title || t.url, tokens(state.search)));
     r.name.title = t.file_path || t.url;
     r.name.classList.toggle("missing", t.status === "FILE_REMOVED");
 
@@ -412,7 +452,13 @@
   }
 
   // ---------------------------------------------------------------- toolbar
-  $("search").addEventListener("input", (e) => { state.search = e.target.value.trim(); render(); });
+  function syncSearch() { $("search-clear").hidden = !state.search; }
+  $("search").addEventListener("input", (e) => { state.search = e.target.value.trim(); syncSearch(); render(); });
+  $("search").addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.preventDefault(); if (state.search) { e.target.value = ""; state.search = ""; syncSearch(); render(); } else e.target.blur(); }
+    if (e.key === "ArrowDown" || e.key === "Enter") { e.preventDefault(); e.target.blur(); const first = $("rows").querySelector(".row"); first?.click(); first?.focus(); }
+  });
+  $("search-clear").addEventListener("click", () => { $("search").value = ""; state.search = ""; syncSearch(); render(); $("search").focus(); });
   const openFolder = () => api("/open-folder", {}).catch((e) => toast(e.message, "error"));
   async function clearFinished() {
     try {
@@ -492,13 +538,17 @@
     pInput.focus();
   }
   function drawPalette() {
-    const q = pInput.value.trim().toLowerCase();
-    const cmds = commands().filter((c) => !q || c.label.toLowerCase().includes(q));
-    const files = q ? state.tasks.filter((t) => (t.filename || "").toLowerCase().includes(q)).slice(0, 8) : [];
-    pItems = [...cmds.map((c) => ({ ...c, group: "Commands" })), ...files.map((t) => ({
-      group: "Downloads", icon: TYPE_ICON[typeOf(t)], label: t.filename, sub: t.status === "COMPLETED" ? "Show in folder" : TITLES[stateOf(t.status) === "active" ? "active" : "all"],
+    const raw = pInput.value.trim();
+    const words = tokens(raw);
+    const cmds = commands().filter((c) => words.every((w) => c.label.toLowerCase().includes(w)));
+    const files = words.length ? state.tasks.filter((t) => searchHit(t, words)).slice(0, 8) : state.tasks.slice(0, 4);
+    const fileItems = files.map((t) => ({
+      group: words.length ? "Downloads" : "Recent", icon: TYPE_ICON[typeOf(t)], label: t.filename || t.title || t.url,
+      sub: [hostOf(t.url || ""), t.status === "COMPLETED" ? "Open" : TITLES[stateOf(t.status)] || ""].filter(Boolean).join(" · "),
       run: () => { go("all"); select(t.id); if (t.status === "COMPLETED") act(t.id, "open"); },
-    }))];
+    }));
+    const cmdItems = cmds.map((c) => ({ ...c, group: "Commands" }));
+    pItems = words.length ? [...fileItems, ...cmdItems] : [...fileItems, ...cmdItems.slice(0, 6)];
     if (isHttp(pInput.value.trim())) pItems.unshift({ group: "Link", icon: "download", label: `Download ${pInput.value.trim()}`, run: () => openAdd(pInput.value.trim()) });
     pIndex = 0;
     const nodes = [];
@@ -506,13 +556,17 @@
     pItems.forEach((item, i) => {
       if (item.group !== last) { nodes.push(h("div", { class: "palette-group", text: item.group })); last = item.group; }
       const el = h("div", { class: "palette-item", role: "option", "aria-selected": String(i === pIndex) },
-        icon(item.icon, 15), h("span", { class: "label", text: item.label }),
+        h("span", { class: "palette-icon" }, icon(item.icon, 15)), h("span", { class: "label" }, ...highlighted(item.label, words)),
         item.sub ? h("span", { class: "sub", text: item.sub }) : null, item.hint ? h("kbd", { text: item.hint }) : null);
       el.addEventListener("mousemove", () => highlight(i));
       el.addEventListener("click", () => runPalette(i));
       nodes.push(el);
     });
-    pList.replaceChildren(...(nodes.length ? nodes : [h("div", { class: "palette-empty", text: "No results" })]));
+    pList.replaceChildren(...(nodes.length ? nodes : [h("div", { class: "palette-empty" },
+      h("div", { class: "empty-art search-art" }, icon("search", 20), h("span", { class: "art-x" }, icon("x", 9))),
+      h("strong", {}, "No results for ", h("q", { text: raw })),
+      h("span", { text: "Try a file name, a site like “youtube”, or a command like “theme”." }))]));
+    $("palette-count").textContent = pItems.length ? `${pItems.length} result${pItems.length === 1 ? "" : "s"}` : "";
   }
   function highlight(i) {
     pIndex = i;
@@ -770,15 +824,38 @@
   $("welcome-dismiss").addEventListener("click", () => { store.set("welcomeDismissed", true); $("welcome").hidden = true; });
 
   // ---------------------------------------------------------------- theme (System / Light / Dark)
-  function setTheme(value) {
-    if (value === "light" || value === "dark") document.documentElement.dataset.theme = value;
-    else delete document.documentElement.dataset.theme;
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const darkNow = () => getComputedStyle(document.documentElement).colorScheme.includes("dark");
+
+  /** Switches theme; when the colours actually change, the new theme spreads out from `origin` (a circle reveal). */
+  function setTheme(value, origin) {
+    const apply = () => {
+      if (value === "light" || value === "dark") document.documentElement.dataset.theme = value;
+      else delete document.documentElement.dataset.theme;
+    };
+    const wasDark = darkNow();
+    if (origin && document.startViewTransition && !reduceMotion.matches) {
+      const r = origin.getBoundingClientRect();
+      const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+      const vt = document.startViewTransition(apply);
+      vt.ready.then(() => {
+        if (darkNow() === wasDark) return; // same colours (e.g. System → Light on a light OS): nothing to reveal
+        document.documentElement.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          { duration: 480, easing: "cubic-bezier(0.16, 1, 0.3, 1)", pseudoElement: "::view-transition-new(root)" });
+      }).catch(() => {});
+    } else apply();
     store.set("veloce-theme-choice", value);
     try { if (value === "system") localStorage.removeItem("veloce-theme"); else localStorage.setItem("veloce-theme", value); } catch { /* blocked */ }
     document.querySelectorAll("#set-theme button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.themeValue === value)));
+    const seg = $("set-theme");
+    seg.style.setProperty("--idx", String(Math.max(0, ["system", "light", "dark"].indexOf(value))));
     const tb = $("btn-theme");
     const label = { system: "System", light: "Light", dark: "Dark" }[value] || "System";
-    tb.replaceChildren(icon({ system: "monitor", light: "sun", dark: "moon" }[value] || "monitor", 16));
+    const svg = icon({ system: "monitor", light: "sun", dark: "moon" }[value] || "monitor", 16);
+    if (tb.dataset.value && tb.dataset.value !== value) svg.classList.add("icon-swap");
+    tb.replaceChildren(svg);
     tb.title = `Theme: ${label} — click to change`;
     tb.setAttribute("aria-label", `Theme: ${label}`);
     tb.dataset.value = value;
@@ -786,11 +863,48 @@
   $("btn-theme").addEventListener("click", () => {
     const order = ["system", "light", "dark"];
     const next = order[(order.indexOf($("btn-theme").dataset.value || "system") + 1) % 3];
-    setTheme(next);
-    toast(`Theme: ${{ system: "System", light: "Light", dark: "Dark" }[next]}`);
+    setTheme(next, $("btn-theme"));
   });
-  document.querySelectorAll("#set-theme button").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.themeValue)));
+  document.querySelectorAll("#set-theme button").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.themeValue, b)));
   setTheme(store.get("veloce-theme-choice", "system"));
+
+  // ---------------------------------------------------------------- home-network sharing
+  function drawShare(s) {
+    const on = !!s?.enabled;
+    $("set-share").checked = on;
+    $("share-panel").hidden = !on;
+    $("btn-sharing").hidden = !on;
+    if (!on) return;
+    $("share-url").textContent = s.url;
+    $("share-code").textContent = s.code;
+    $("share-copy").dataset.link = s.link;
+    $("share-devices").textContent = s.devices ? `${s.devices} device${s.devices === 1 ? "" : "s"} connected` : "No devices connected yet";
+  }
+  async function refreshShare() {
+    try { drawShare(await api("/share")); } catch { /* engine offline */ }
+  }
+  $("set-share").addEventListener("change", async (e) => {
+    const want = e.target.checked;
+    e.target.disabled = true;
+    try {
+      drawShare(await api("/share", { enabled: want }));
+      toast(want ? "Sharing on your home network" : "Sharing turned off — connected devices lost access");
+    } catch (err) {
+      e.target.checked = !want;
+      toast(err.message, "error");
+    } finally { e.target.disabled = false; }
+  });
+  $("share-copy").addEventListener("click", async (e) => {
+    try { await navigator.clipboard.writeText(e.currentTarget.dataset.link); toast("Link copied — it includes the access code"); }
+    catch { toast("Couldn't copy", "error"); }
+  });
+  $("btn-sharing").addEventListener("click", () => go("settings"));
+  $("share-new-code").addEventListener("click", async () => {
+    try { drawShare(await api("/share", { new_code: true })); toast("New code made — connected devices need to enter it"); }
+    catch (err) { toast(err.message, "error"); }
+  });
+  refreshShare();
+  setInterval(() => { if (!document.hidden) refreshShare(); }, 10000);
 
   // ---------------------------------------------------------------- app updates
   async function refreshUpdate(force = false) {
@@ -806,6 +920,16 @@
     $("set-update-text").textContent = busy ? `Updating to ${latest}…` : available ? `Version ${latest} is available` : "You're on the latest version";
     $("set-update-app").textContent = available ? "Update" : "Check now";
     if (u.extension_dir) $("set-ext-dir").textContent = u.extension_dir;
+    if (!force) {
+      const stale = !!u.extension_outdated;
+      $("ext-banner").hidden = !stale || !!available;
+      $("ext-title").textContent = `Browser extension ${u.extension_running || ""} is out of date (${u.extension_version} is ready)`;
+      $("set-ext-status").textContent = stale
+        ? `Chrome is running ${u.extension_running} from another folder, so it can't update. Remove it in chrome://extensions, then Load unpacked this folder once. After that it updates itself.`
+        : u.extension_running ? `Version ${u.extension_running} is connected and up to date. It updates itself with the app.`
+          : "Load this folder once at chrome://extensions (Developer mode → Load unpacked). Veloce keeps it up to date.";
+      $("set-ext-status").classList.toggle("warn-text", stale);
+    }
   }
   async function startUpdate() {
     $("update-now").disabled = true;
@@ -815,6 +939,10 @@
     } catch (e) { toast(e.message, "error"); $("update-now").disabled = false; }
   }
   $("update-now").addEventListener("click", startUpdate);
+  $("ext-fix").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText($("set-ext-dir").textContent); toast("Folder path copied — now Load unpacked it in chrome://extensions"); } catch { /* fall through */ }
+    go("settings");
+  });
   $("set-update-app").addEventListener("click", async () => {
     if ($("set-update-app").textContent === "Update") return startUpdate();
     await refreshUpdate(true);

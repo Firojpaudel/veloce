@@ -52,13 +52,15 @@
         <div class="toolbar" id="list-tools">
           <label class="search">
             <span data-icon="search"></span>
-            <input type="search" id="search" placeholder="Filter" aria-label="Filter downloads">
+            <input type="search" id="search" placeholder="Search downloads" aria-label="Search downloads" autocomplete="off" spellcheck="false">
+            <button class="search-clear" id="search-clear" type="button" aria-label="Clear search" hidden><span data-icon="x"></span></button>
             <kbd>/</kbd>
           </label>
           <button class="icon-btn" id="btn-folder" type="button" title="Open downloads folder" aria-label="Open downloads folder"><span data-icon="folder"></span></button>
           <button class="btn small ghost" id="btn-clear" type="button" title="Remove finished items from the list — files stay on disk">Clear finished</button>
         </div>
         <div class="topbar-end">
+          <button class="icon-btn sharing-on" id="btn-sharing" type="button" title="Sharing your downloads on the home network — manage" aria-label="Sharing on home network" hidden><span data-icon="wifi"></span></button>
           <span class="theme-wrap">
             <button class="icon-btn" id="btn-theme" type="button" title="Theme: System" aria-label="Theme: System"></button>
             <span class="engine-pill" id="engine-pill" role="status" title="Veloce engine status"><span class="dot" id="engine-dot"></span><span class="sr-only" id="engine-text">Connecting</span></span>
@@ -73,6 +75,15 @@
           <span>Updates in about a minute: verified download, then Veloce restarts. The extension updates itself too.</span>
         </div>
         <button class="btn primary small" id="update-now" type="button">Update</button>
+      </section>
+
+      <section class="welcome" id="ext-banner" hidden>
+        <div class="welcome-icon"><img src="/ui/logo.png" alt="" width="28" height="28"></div>
+        <div class="welcome-text">
+          <strong id="ext-title">Browser extension is out of date</strong>
+          <span>Chrome loaded it from a different folder, so it can't update itself. Load it from Veloce's folder once.</span>
+        </div>
+        <button class="btn primary small" id="ext-fix" type="button">Fix it</button>
       </section>
 
       <section class="welcome" id="welcome" hidden>
@@ -128,6 +139,27 @@
           </div>
 
           <div class="group">
+            <h2>Home network</h2>
+            <label class="setting">
+              <span class="setting-icon" data-icon="wifi"></span>
+              <span class="setting-text"><strong>Stream to your devices</strong><span>Play and download what's in your Veloce folder on phones and laptops on this Wi-Fi. Nothing else on this computer is shared. Turns off whenever Veloce restarts.</span></span>
+              <input type="checkbox" class="switch" id="set-share">
+            </label>
+            <div class="setting share-panel" id="share-panel" hidden>
+              <div class="share-step">
+                <span class="share-label">On your phone or laptop, open</span>
+                <div class="share-field"><span class="mono" id="share-url"></span><button class="btn small" id="share-copy" type="button"><span data-icon="copy"></span>Copy link</button></div>
+              </div>
+              <div class="share-step">
+                <span class="share-label">Then enter this access code</span>
+                <div class="share-code-row"><div class="share-code" id="share-code" aria-live="polite"></div>
+                  <button class="btn small ghost" id="share-new-code" type="button" title="Make a new code and sign out every connected device"><span data-icon="refresh"></span>New code</button></div>
+              </div>
+              <p class="share-foot"><span id="share-devices">No devices connected</span> · Wrong codes lock a device out for longer each time. Windows may ask to allow Veloce on private networks: allow it.</p>
+            </div>
+          </div>
+
+          <div class="group">
             <h2>Updates</h2>
             <div class="setting">
               <span class="setting-icon" data-icon="refresh"></span>
@@ -136,7 +168,7 @@
             </div>
             <div class="setting">
               <span class="setting-icon" data-icon="puzzle"></span>
-              <span class="setting-text"><strong>Browser extension</strong><span>Load this folder once at <code>chrome://extensions</code> (Developer mode → Load unpacked). Veloce keeps it up to date.</span>
+              <span class="setting-text"><strong>Browser extension</strong><span id="set-ext-status">Load this folder once at chrome://extensions (Developer mode → Load unpacked). Veloce keeps it up to date.</span>
                 <span class="path-field"><span id="set-ext-dir" class="mono"></span></span></span>
               <button class="btn small" id="set-copy-ext" type="button">Copy path</button>
             </div>
@@ -186,7 +218,7 @@
         <input type="text" id="palette-input" placeholder="Search downloads or type a command…" aria-label="Command" autocomplete="off" spellcheck="false">
       </div>
       <div class="palette-list" id="palette-list" role="listbox"></div>
-      <footer class="sheet-foot"><span class="hints"><kbd>↑</kbd><kbd>↓</kbd> navigate <kbd>↵</kbd> run <kbd>Esc</kbd> close</span></footer>
+      <footer class="sheet-foot"><span class="hints"><kbd>↑</kbd><kbd>↓</kbd> navigate <kbd>↵</kbd> open <kbd>Esc</kbd> close</span><span class="hints" id="palette-count"></span></footer>
     </div>
   </dialog>
 
