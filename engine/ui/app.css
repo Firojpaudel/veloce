@@ -346,6 +346,9 @@ label.setting { cursor: pointer; }
 .setting-text span { color: var(--text-3); font-size: 12.5px; overflow-wrap: anywhere; }
 .setting > .btn, .setting > .switch, .setting > .theme-seg { flex: none; }
 .warn-text { color: var(--amber) !important; }
+.setting-buttons { display: flex; gap: 6px; flex: none; }
+.ext-setup { align-items: flex-start; }
+.ext-setup .btn, .ext-setup .icon-btn { margin-top: 2px; }
 .path-field { display: block; margin-top: 8px; padding: 7px 10px; border-radius: 7px; background: var(--bg-subtle); border: 1px solid var(--line); }
 .path-field .mono { color: var(--text-2); }
 .tool-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); display: inline-block; }

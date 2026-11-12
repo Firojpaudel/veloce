@@ -86,6 +86,17 @@
         <button class="btn primary small" id="ext-fix" type="button">Fix it</button>
       </section>
 
+      <section class="welcome ext-setup" id="ext-setup" hidden>
+        <div class="welcome-icon"><img src="/ui/logo.png" alt="" width="28" height="28"></div>
+        <div class="welcome-text">
+          <strong>Add the browser extension</strong>
+          <span>In Chrome or Edge, open <code>chrome://extensions</code>, turn on <b>Developer mode</b>, click <b>Load unpacked</b> and choose the Veloce extension folder. You only do this once; it updates itself after that.</span>
+        </div>
+        <button class="btn primary small" id="ext-open" type="button">Open folder</button>
+        <button class="btn small" id="ext-copy" type="button">Copy path</button>
+        <button class="icon-btn" id="ext-dismiss" type="button" aria-label="Dismiss"><span data-icon="x"></span></button>
+      </section>
+
       <section class="welcome" id="welcome" hidden>
         <div class="welcome-icon"><img src="/ui/logo.png" alt="" width="28" height="28"></div>
         <div class="welcome-text">
@@ -170,7 +181,7 @@
               <span class="setting-icon" data-icon="puzzle"></span>
               <span class="setting-text"><strong>Browser extension</strong><span id="set-ext-status">Load this folder once at chrome://extensions (Developer mode → Load unpacked). Veloce keeps it up to date.</span>
                 <span class="path-field"><span id="set-ext-dir" class="mono"></span></span></span>
-              <button class="btn small" id="set-copy-ext" type="button">Copy path</button>
+              <span class="setting-buttons"><button class="btn small" id="set-open-ext" type="button">Open folder</button><button class="btn small" id="set-copy-ext" type="button">Copy path</button></span>
             </div>
           </div>
 

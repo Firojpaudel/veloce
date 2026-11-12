@@ -929,6 +929,7 @@
         : u.extension_running ? `Version ${u.extension_running} is connected and up to date. It updates itself with the app.`
           : "Load this folder once at chrome://extensions (Developer mode → Load unpacked). Veloce keeps it up to date.";
       $("set-ext-status").classList.toggle("warn-text", stale);
+      $("ext-setup").hidden = !!u.extension_running || !u.extension_dir || !!store.get("extSetupDismissed", false);
     }
   }
   async function startUpdate() {
@@ -948,6 +949,13 @@
     await refreshUpdate(true);
     toast($("set-update-text").textContent);
   });
+  const openExtFolder = () => api("/extension/open-folder", {})
+    .then((r) => toast(r.success ? "In Chrome: Load unpacked → choose this folder" : "Couldn't open the folder", r.success ? "" : "error"))
+    .catch((e) => toast(e.message, "error"));
+  $("ext-open").addEventListener("click", openExtFolder);
+  $("set-open-ext").addEventListener("click", openExtFolder);
+  $("ext-copy").addEventListener("click", () => $("set-copy-ext").click());
+  $("ext-dismiss").addEventListener("click", () => { store.set("extSetupDismissed", true); $("ext-setup").hidden = true; });
   $("set-copy-ext").addEventListener("click", async () => {
     try { await navigator.clipboard.writeText($("set-ext-dir").textContent); toast("Folder path copied"); } catch { toast("Couldn't copy", "error"); }
   });

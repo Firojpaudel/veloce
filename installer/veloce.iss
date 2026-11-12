@@ -43,6 +43,8 @@ Source: "..\dist\Veloce\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdir
 
 [Icons]
 Name: "{group}\Veloce"; Filename: "{app}\Veloce.exe"
+; Chrome/Edge "Load unpacked" target; Veloce keeps this folder up to date
+Name: "{group}\Veloce browser extension"; Filename: "{%USERPROFILE}\.veloce\extension"; Comment: "Choose this folder in chrome://extensions → Load unpacked"
 Name: "{autodesktop}\Veloce"; Filename: "{app}\Veloce.exe"; Tasks: desktopicon
 
 [Registry]

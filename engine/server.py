@@ -174,6 +174,23 @@ def media_title(name: str, fallback: str) -> str:
     return name[:150] or fallback
 
 
+def open_extension_folder() -> bool:
+    """Opens the folder to pick in Chrome's "Load unpacked" (the app keeps it up to date)."""
+    from . import app_update
+    folder = app_update.status().get("extension_dir")
+    if not folder or not os.path.isdir(folder):
+        return False
+    try:
+        if sys.platform == "win32":
+            subprocess.Popen(["explorer", folder])
+        else:
+            subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", folder])
+        return True
+    except Exception as e:
+        logger.error(f"Failed to open the extension folder: {e}")
+        return False
+
+
 def reveal_in_explorer(file_path: Optional[str]) -> bool:
     """Opens the platform file manager at a file (selected) or folder inside the download directory."""
     norm_path = os.path.normpath(file_path or DEFAULT_DOWNLOAD_DIR)
@@ -836,6 +853,10 @@ class RequestHandler(BaseHTTPRequestHandler):
             except OSError as e:
                 raise BadRequest(f"Couldn't start sharing: {e}")
             self._send_json(200, status)
+            return
+
+        if path == "/api/extension/open-folder":
+            self._send_json(200, {"success": open_extension_folder()})
             return
 
         if path == "/api/open-folder":
