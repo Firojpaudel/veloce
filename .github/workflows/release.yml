@@ -72,6 +72,11 @@ jobs:
             main.py
           dist\Veloce\Veloce.exe autostart status
 
+      # ffmpeg (joins video + audio) and Deno (YouTube) ship inside the installer: nothing to download on first run
+      - name: Bundle video tools
+        if: runner.os == 'Windows'
+        run: python scripts/bundle_tools.py dist/Veloce
+
       # Optional Authenticode signing. Removes the SmartScreen "unknown publisher" warning.
       # Add WINDOWS_CERT_PFX (base64 .pfx) and WINDOWS_CERT_PASSWORD as repository secrets to enable.
       # Free certificates for open-source projects: https://signpath.org
@@ -134,6 +139,16 @@ jobs:
 
       - name: Checksums
         run: cd release_assets && sha256sum * > SHA256SUMS.txt
+
+      # Fast mirror (Hugging Face CDN) — runs only when you've added your own HF_TOKEN secret
+      - name: Upload to the fast download mirror
+        if: env.HF_TOKEN != ''
+        continue-on-error: true   # a mirror problem never blocks the GitHub release
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install --quiet huggingface_hub
+          python3 scripts/mirror_upload.py "${{ github.ref_name }}" release_assets
 
       - uses: softprops/action-gh-release@v2
         with:

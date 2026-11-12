@@ -53,9 +53,18 @@ def own_path() -> str:
     return os.path.join(bin_dir(), "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
 
 
+def app_dir() -> str:
+    """Folder of the installed app (the Windows installer ships ffmpeg and Deno right next to Veloce.exe)."""
+    return os.path.dirname(os.path.abspath(sys.executable)) if getattr(sys, "frozen", False) else ""
+
+
 def find() -> Optional[str]:
-    """Path of a usable ffmpeg: Veloce's own copy first, then the system's."""
-    return own_path() if os.path.isfile(own_path()) else shutil.which("ffmpeg")
+    """Path of a usable ffmpeg: the one bundled with the app, Veloce's downloaded copy, then the system's."""
+    bundled = os.path.join(app_dir(), os.path.basename(own_path())) if app_dir() else ""
+    for path in (bundled, own_path()):
+        if path and os.path.isfile(path):
+            return path
+    return shutil.which("ffmpeg")
 
 
 def _platform_key():
@@ -74,15 +83,25 @@ def install(timeout: float = 180) -> Optional[str]:
     os.makedirs(bin_dir(), exist_ok=True)
     tmp = tempfile.mkdtemp(prefix=".ffmpeg-", dir=bin_dir())
     try:
+        from . import mirror
         gz_path = os.path.join(tmp, asset)
-        digest = hashlib.sha256()
-        req = urllib.request.Request(RELEASE + asset, headers={"User-Agent": "veloce-ffmpeg-setup"})
-        with urllib.request.urlopen(req, timeout=timeout) as src, open(gz_path, "wb") as dst:
-            for chunk in iter(lambda: src.read(256 * 1024), b""):
-                digest.update(chunk)
-                dst.write(chunk)
-        if digest.hexdigest() != expected:
-            raise IOError("ffmpeg download failed checksum verification")
+        last = None
+        for url in mirror.candidates(f"tools/{asset}", RELEASE + asset):
+            try:
+                digest = hashlib.sha256()
+                req = urllib.request.Request(url, headers={"User-Agent": "veloce-ffmpeg-setup"})
+                with urllib.request.urlopen(req, timeout=timeout) as src, open(gz_path, "wb") as dst:
+                    for chunk in iter(lambda: src.read(256 * 1024), b""):
+                        digest.update(chunk)
+                        dst.write(chunk)
+                if digest.hexdigest() == expected:
+                    break
+                last = IOError(f"checksum mismatch from {url}")
+            except Exception as e:
+                last = e
+            logger.info(f"ffmpeg download from {url} failed ({last}); trying the next source")
+        else:
+            raise IOError(f"ffmpeg download failed: {last}")
         out = os.path.join(tmp, "ffmpeg.bin")
         with gzip.open(gz_path, "rb") as src, open(out, "wb") as dst:
             shutil.copyfileobj(src, dst, 1024 * 1024)

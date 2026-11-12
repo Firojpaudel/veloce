@@ -32,7 +32,6 @@ from typing import Dict, Optional, Tuple
 logger = logging.getLogger("VeloceJS")
 
 MIN_VERSIONS = {"deno": (2, 3, 0), "node": (22, 0, 0), "bun": (1, 2, 11)}
-DENO_RELEASE = "https://github.com/denoland/deno/releases/latest/download/"
 _lock = threading.Lock()
 _install_lock = threading.Lock()
 _cache: Optional[Dict[str, dict]] = None
@@ -68,7 +67,10 @@ def find_runtimes(refresh: bool = False) -> Dict[str, dict]:
             return dict(_cache)
         found: Dict[str, dict] = {}
         own = os.path.join(bin_dir(), _exe("deno"))
-        candidates = [("deno", own if os.path.isfile(own) else shutil.which("deno"), r"^deno (\S+)"),
+        bundled = os.path.join(os.path.dirname(os.path.abspath(sys.executable)), _exe("deno")) \
+            if getattr(sys, "frozen", False) else ""
+        deno = next((p for p in (bundled, own) if p and os.path.isfile(p)), None) or shutil.which("deno")
+        candidates = [("deno", deno, r"^deno (\S+)"),
                       ("bun", shutil.which("bun"), r"^(\S+)"),
                       ("node", shutil.which("node"), r"^v(\S+)")]
         for name, path, pattern in candidates:
@@ -92,30 +94,46 @@ def _deno_asset() -> Optional[str]:
     return None
 
 
+DENO_VERSION = "2.9.8"
+DENO_SHA256 = {
+    "deno-x86_64-pc-windows-msvc.zip": "cba84b26e0df5ae7f74fc66b86a95b866872a86292ebd84fa1e959927edd93bf",
+    "deno-x86_64-unknown-linux-gnu.zip": "e890975bc2549807bbcc0b584ffafda72cc7c93349dd99c80483dd784f6c4609",
+    "deno-aarch64-unknown-linux-gnu.zip": "d49596c20b9788cf8f5d8ddf644103d4bde56ed239753f0bdb92ba9361d51905",
+    "deno-aarch64-apple-darwin.zip": "9f0bf660393da2eaff044cdc7444cb08c73f235849b61d224d825a194ce7c98e",
+    "deno-x86_64-apple-darwin.zip": "4b2f5edd2639b7470f034238b321d7002d8dfb4726d8558f52c17afac370eb2c",
+}
+
+
 def install_deno(timeout: float = 180) -> Optional[str]:
-    """Downloads the official Deno binary into ~/.veloce/bin after verifying its SHA-256. Returns its path."""
+    """Downloads a pinned Deno (fast mirror first, then GitHub) verified by SHA-256 into ~/.veloce/bin."""
+    from . import mirror
     asset = _deno_asset()
-    if not asset:
+    if not asset or asset not in DENO_SHA256:
         logger.warning("No Deno build for this platform; install Deno, Node 22+ or Bun to enable YouTube")
         return None
+    expected = DENO_SHA256[asset]
     os.makedirs(bin_dir(), exist_ok=True)
-    headers = {"User-Agent": "veloce-runtime-setup"}
-    with urllib.request.urlopen(urllib.request.Request(DENO_RELEASE + asset + ".sha256sum", headers=headers), timeout=30) as r:
-        expected = re.search(r"\b([0-9a-fA-F]{64})\b", r.read().decode("utf-8", "replace"))
-    if not expected:
-        raise IOError("Deno checksum file was unreadable")
-
     tmp = tempfile.mkdtemp(prefix=".deno-", dir=bin_dir())
     try:
         zpath = os.path.join(tmp, asset)
-        digest = hashlib.sha256()
-        with urllib.request.urlopen(urllib.request.Request(DENO_RELEASE + asset, headers=headers), timeout=timeout) as src, \
-                open(zpath, "wb") as dst:
-            for chunk in iter(lambda: src.read(256 * 1024), b""):
-                digest.update(chunk)
-                dst.write(chunk)
-        if digest.hexdigest().lower() != expected.group(1).lower():
-            raise IOError("Deno download failed checksum verification")
+        original = f"https://github.com/denoland/deno/releases/download/v{DENO_VERSION}/{asset}"
+        last = None
+        for url in mirror.candidates(f"tools/{asset}", original):
+            try:
+                digest = hashlib.sha256()
+                req = urllib.request.Request(url, headers={"User-Agent": "veloce-runtime-setup"})
+                with urllib.request.urlopen(req, timeout=timeout) as src, open(zpath, "wb") as dst:
+                    for chunk in iter(lambda: src.read(256 * 1024), b""):
+                        digest.update(chunk)
+                        dst.write(chunk)
+                if digest.hexdigest() == expected:
+                    break
+                last = IOError(f"checksum mismatch from {url}")
+            except Exception as e:
+                last = e
+            logger.info(f"Deno download from {url} failed ({last}); trying the next source")
+        else:
+            raise IOError(f"Deno download failed: {last}")
         with zipfile.ZipFile(zpath) as zf:
             member = next(n for n in zf.namelist() if os.path.basename(n) == _exe("deno"))
             zf.extract(member, tmp)
