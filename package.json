@@ -1,11 +1,12 @@
 {
   "name": "veloce",
-  "version": "1.1.5",
+  "version": "2.0.3",
   "private": true,
   "description": "Adaptive multi-connection download accelerator with a browser extension and desktop dashboard",
   "scripts": {
     "test": "python3 -m unittest discover -s tests",
     "check:js": "node --check extension/src/background.js && node --check extension/src/content.js && node --check extension/src/popup.js && node --check engine/ui/app.js",
+    "check:version": "python3 scripts/check_version.py",
     "typecheck": "tsc -p jsconfig.json --noEmit && tsc -p extension/jsconfig.json --noEmit",
     "package:extension": "python3 scripts/package_extension.py",
     "icons": "python3 scripts/generate_icons.py"

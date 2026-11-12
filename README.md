@@ -73,21 +73,17 @@ Lives in your tray at about 22 MB of memory, catches browser downloads, and upda
 
 **1 · Get the app**
 
-<sub>Official downloads from **[GitHub Releases](https://github.com/Firojpaudel/veloce/releases/latest)** (CDN links provide a **faster mirror**).</sub>
+<sub>Downloads come from a fast CDN mirror. Prefer GitHub? Every file is also on the <a href="https://github.com/Firojpaudel/veloce/releases/latest">Releases page</a>.</sub>
 
-| Platform | Primary (GitHub Releases) | Faster Mirror (CDN) |
-| :--- | :--- | :--- |
-| **Windows 10/11** | [**Installer**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-setup-windows-x64.exe) · [portable zip](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-windows-x64-portable.zip) | [Installer](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-setup-windows-x64.exe) · [portable zip](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-windows-x64-portable.zip) |
-| **macOS (Apple Silicon)** | [**veloce-macos-arm64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-arm64) | [veloce-macos-arm64](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-macos-arm64) |
-| **macOS (Intel)** | [**veloce-macos-x86_64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-x86_64) | [veloce-macos-x86_64](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-macos-x86_64) |
-| **Linux (x86_64)** | [**veloce-linux-x86_64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-linux-x86_64) | [veloce-linux-x86_64](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-linux-x86_64) |
+| Windows 10/11 | macOS (Apple Silicon) | macOS (Intel) | Linux |
+| :---: | :---: | :---: | :---: |
+| [**Installer**](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-setup-windows-x64.exe) · [portable zip](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-windows-x64-portable.zip) | [**veloce-macos-arm64**](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-macos-arm64) | [**veloce-macos-x86_64**](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-macos-x86_64) | [**veloce-linux-x86_64**](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-linux-x86_64) |
 
 > [!NOTE]
-> **Verifying downloads**: Checksum file is at [`SHA256SUMS.txt`](https://github.com/Firojpaudel/veloce/releases/latest/download/SHA256SUMS.txt) (signed keylessly via Sigstore Cosign). To verify your download:
+> **Checksums & verification**: Checksum list is at [`SHA256SUMS.txt`](https://github.com/Firojpaudel/veloce/releases/latest/download/SHA256SUMS.txt) (signed keylessly via Sigstore Cosign). To verify your download:
 > - **Windows**: `certutil -hashfile <filename> SHA256`
 > - **macOS**: `shasum -a 256 <filename>`
 > - **Linux**: `sha256sum <filename>`
-> - **Sigstore Cosign**: `cosign verify-blob --certificate-identity-regexp "^https://github.com/Firojpaudel/veloce/" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --signature <file>.sig --certificate <file>.pem <file>`
 
 Open it. Veloce settles into your system tray and opens its window.
 
@@ -295,7 +291,7 @@ More answers — install steps for each system, every shortcut, settings and fix
 ## Development
 
 ```bash
-python3 -m unittest discover -s tests      # 31 tests, no network needed
+python3 -m unittest discover -s tests      # 60 tests, no network needed
 npm run check:js                           # syntax-check extension and app scripts
 python3 scripts/package_extension.py       # build dist/veloce-extension.zip
 python3 scripts/benchmark_suite.py         # real-world benchmark (uses the internet)

@@ -46,3 +46,4 @@ jobs:
         run: |
           for f in extension/src/*.js engine/ui/app.js; do node --check "$f"; done
           python3 -c "import json; json.load(open('extension/manifest.json'))"
+          python3 scripts/check_version.py

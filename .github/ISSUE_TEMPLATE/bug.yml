@@ -1,0 +1,61 @@
+name: Bug Report
+description: Create a report to help us improve Veloce
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please check existing issues first to see if this has already been reported.
+  - type: input
+    id: version
+    attributes:
+      label: Veloce Version
+      description: What version of Veloce are you running? (e.g. 2.0.3)
+      placeholder: "2.0.3"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux (x86_64)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what went wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions to reproduce the behavior.
+      placeholder: |
+        1. Start download of '...'
+        2. Wait until 50%
+        3. Pause and restart engine
+        4. See error '...'
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Paste any logs from ~/.veloce/engine.log or attach screenshots if applicable.
+      render: shell
