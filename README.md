@@ -54,20 +54,16 @@ Lives in your tray at about 22 MB of memory, catches browser downloads, and upda
 
 ## In your browser
 
-<table>
-<tr>
-<td width="58%" valign="top">
-<img src="assets/screenshots/video-picker-light.png" alt="Veloce's quality picker on a YouTube video" width="100%">
-<p><sub>Hover any video and press <b>Download</b>. Pick a quality, audio only, or the whole playlist.</sub></p>
-</td>
-<td width="42%" valign="top">
-<img src="assets/screenshots/popup-light.png" alt="The Veloce popup with a live download and its connection lanes" width="100%">
-<p><sub>The toolbar popup: paste a link, see live progress — each blue lane is one connection.</sub></p>
-</td>
-</tr>
-</table>
+<p align="center">
+  <img src="assets/screenshots/browser.png" alt="Left: Veloce's quality picker on a YouTube video. Right: the toolbar popup with a live download and its connection lanes." width="880">
+</p>
 
-<sub>Real captures of the extension and app. Download names are test files from a local server.</sub>
+<p align="center"><sub>
+<b>Left:</b> hover any video and press <b>Download</b> — pick a quality, audio only, or the whole playlist.
+&nbsp;·&nbsp;
+<b>Right:</b> the toolbar popup — paste a link and watch live progress; each blue lane is one connection.
+<br/>Real captures of the extension and app. Download names are test files from a local server.
+</sub></p>
 
 ## Install
 
@@ -77,27 +73,24 @@ Lives in your tray at about 22 MB of memory, catches browser downloads, and upda
 | :---: | :---: | :---: | :---: |
 | [**veloce-windows-x64.exe**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-windows-x64.exe) | [**veloce-macos-arm64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-arm64) | [**veloce-macos-x86_64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-x86_64) | [**veloce-linux-x86_64**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-linux-x86_64) |
 
-Open it. Veloce settles into your system tray and opens its window; the first time, it offers to **start at login** so you never have to think about it again.
+Open it. Veloce settles into your system tray and opens its window.
 
-<details>
-<summary><b>Windows says “Windows protected your PC”?</b></summary>
-<br/>
+> [!WARNING]
+> **First launch may show a security prompt** because the app isn't code-signed yet — it's not about anything Veloce does.
+> - **Windows** (“Windows protected your PC”): click **More info → Run anyway**.
+> - **macOS** (“can't be opened”): right-click the file → **Open**, or run `xattr -d com.apple.quarantine veloce-macos-*`.
 
-That's SmartScreen warning about an app that isn't code-signed yet — not about anything Veloce does. Click **More info → Run anyway**. Signing is planned; see the [FAQ](#faq).
-</details>
-
-<details>
-<summary><b>macOS says the app “can't be opened”?</b></summary>
-<br/>
-
-Right-click the file → **Open** the first time, or run `xattr -d com.apple.quarantine veloce-macos-*`.
-</details>
+> [!TIP]
+> Accept **Start at login** when Veloce offers it on first launch. It then runs quietly in your tray (about 22 MB of memory) and you never have to open it again.
 
 **2 · Add the browser extension** (Chrome, Edge, Brave and other Chromium browsers)
 
 1. Download and unzip [**veloce-extension.zip**](https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-extension.zip).
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and choose the folder.
 3. Pin Veloce to your toolbar. <kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>V</kbd> opens it.
+
+> [!IMPORTANT]
+> Video and audio downloads need the **app running**. When it's off, the extension hands ordinary file downloads back to your browser, so nothing is ever lost — you just don't get the speed-up.
 
 <details>
 <summary><b>Run from source instead</b></summary>
@@ -157,6 +150,9 @@ Videos are resolved by [yt-dlp](https://github.com/yt-dlp/yt-dlp) in a short-liv
 - **Fast CDNs:** Veloce 1.0 was ~2× *slower* than a single stream on Kernel.org; 1.1 matches it.
 - **Some servers can't be helped.** Apache's archive limits each IP; SoundHelix varies run to run. No downloader beats a per-IP cap.
 
+> [!NOTE]
+> Measured on one home connection on one day. Internet speeds swing a lot between runs, so treat these as a direction, not a promise — and [run the benchmark yourself](scripts/benchmark_suite.py).
+
 <details>
 <summary><b>Numbers & method</b></summary>
 <br/>
@@ -205,6 +201,9 @@ From MDM's README and source, November 2026. The two haven't been benchmarked on
 - **Verified updates.** yt-dlp updates are checked against PyPI's published SHA-256 before use.
 
 ## FAQ
+
+> [!CAUTION]
+> Only download what you have the right to keep. Veloce saves what sites serve openly; it does not and will not break DRM (Spotify, Netflix and similar).
 
 <details>
 <summary><b>Why does Windows warn me about the app?</b></summary>
