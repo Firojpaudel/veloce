@@ -27,7 +27,7 @@ jobs:
             asset_name: veloce-windows-x64.exe
           - os: macos-latest        # Apple Silicon runner
             asset_name: veloce-macos-arm64
-          - os: macos-13            # Intel runner
+          - os: macos-15-intel      # Intel runner (macos-13 was retired and queues forever)
             asset_name: veloce-macos-x86_64
 
     steps:
