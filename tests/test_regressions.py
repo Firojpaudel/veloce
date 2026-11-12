@@ -220,7 +220,7 @@ class TestEngineCorrectness(unittest.TestCase):
     def test_pause_then_resume_produces_intact_file(self):
         server, url = serve(RangeServer)
         try:
-            RangeServer.delay = 0.05
+            RangeServer.delay = 0.02
             task = DownloadTask(f"{url}/big.bin", self.tmp, num_connections=4)
             t = threading.Thread(target=task.start)
             t.start()
@@ -254,7 +254,7 @@ class TestEngineCorrectness(unittest.TestCase):
             self.assertTrue(store.remove_task(tid))
             self.assertTrue(os.path.exists(path), "Remove must never delete a finished download")
 
-            RangeServer.delay = 0.05
+            RangeServer.delay = 0.02
             tid = store.create_task(f"{url}/partial.bin", self.tmp, connections=2)
             task = store.tasks[tid]
             for _ in range(100):

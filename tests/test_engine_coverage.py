@@ -113,6 +113,12 @@ class ControlledCoverageServer(BaseHTTPRequestHandler):
                 except OSError:
                     pass
                 self.close_connection = True
+                # Hard reset (RST) so the client fails fast instead of waiting for a read timeout
+                try:
+                    self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
+                    self.connection.close()
+                except OSError:
+                    pass
                 return
 
         self.send_response(206)

@@ -104,7 +104,7 @@ class TestCrashSafety(unittest.TestCase):
         CrashMockServer.delay = 0.0
 
     def test_midway_kill_and_resume_across_restarts(self):
-        CrashMockServer.delay = 0.05
+        CrashMockServer.delay = 0.02
         with tempfile.TemporaryDirectory() as tmpdir:
             hist_file = os.path.join(tmpdir, "history.json")
             dl_dir = os.path.join(tmpdir, "downloads")
@@ -162,7 +162,7 @@ class TestCrashSafety(unittest.TestCase):
             self.assertEqual(hashlib.sha256(content).hexdigest(), SHA256_1)
 
     def test_server_changes_file_triggers_fresh_restart(self):
-        CrashMockServer.delay = 0.05
+        CrashMockServer.delay = 0.02
         with tempfile.TemporaryDirectory() as tmpdir:
             hist_file = os.path.join(tmpdir, "history.json")
             dl_dir = os.path.join(tmpdir, "downloads")
@@ -207,7 +207,7 @@ class TestCrashSafety(unittest.TestCase):
             self.assertEqual(hashlib.sha256(content).hexdigest(), SHA256_2)
 
     def test_no_file_exists_at_final_name_until_completion(self):
-        CrashMockServer.delay = 0.05
+        CrashMockServer.delay = 0.02
         with tempfile.TemporaryDirectory() as tmpdir:
             out_file = os.path.join(tmpdir, "target.bin")
             task = DownloadTask(f"{self.url}/target.bin", output_path=out_file, num_connections=4)
@@ -251,7 +251,7 @@ class TestCrashSafety(unittest.TestCase):
             self.assertIsNotNone(share.resolve("video.mp4"))
 
     def test_cancel_removes_both_temp_files(self):
-        CrashMockServer.delay = 0.05
+        CrashMockServer.delay = 0.02
         with tempfile.TemporaryDirectory() as tmpdir:
             store = TaskStore(history_file=None)
             tid = store.create_task(f"{self.url}/cancel_test.bin", output_path=tmpdir, connections=4)
