@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      # The engine itself needs only the standard library; tests don't need yt-dlp either.
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+  extension:
+    name: Extension checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Syntax-check scripts and validate manifest
+        run: |
+          for f in extension/src/*.js engine/ui/app.js; do node --check "$f"; done
+          python3 -c "import json; json.load(open('extension/manifest.json'))"

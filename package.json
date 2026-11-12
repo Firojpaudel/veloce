@@ -1,18 +1,16 @@
 {
-  "name": "idm",
-  "version": "1.0.0",
-  "description": "### High-Performance Dynamic Multi-Stream Download Accelerator & Media Sniffer",
-  "main": "index.js",
-  "directories": {
-    "test": "tests"
-  },
+  "name": "veloce",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Adaptive multi-connection download accelerator with a browser extension and desktop dashboard",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "typecheck": "tsc -p jsconfig.json --noEmit && tsc -p extension/jsconfig.json --noEmit"
+    "test": "python3 -m unittest discover -s tests",
+    "check:js": "node --check extension/src/background.js && node --check extension/src/content.js && node --check extension/src/popup.js && node --check engine/ui/app.js",
+    "typecheck": "tsc -p jsconfig.json --noEmit && tsc -p extension/jsconfig.json --noEmit",
+    "package:extension": "python3 scripts/package_extension.py",
+    "icons": "python3 scripts/generate_icons.py"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@types/chrome": "^0.3.7",
     "typescript": "^7.0.2"

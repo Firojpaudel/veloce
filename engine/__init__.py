@@ -1,3 +1,2 @@
-"""Veloce Engine Package"""
-from .segmenter import DownloadTask, SegmentManager, Segment
-from .server import run_server, STORE
+"""Veloce engine package. Submodules are imported on demand to keep start-up and memory small."""
+from .version import __version__  # noqa: F401

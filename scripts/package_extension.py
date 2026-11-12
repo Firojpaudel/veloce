@@ -11,8 +11,8 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXT_DIR = os.path.join(PROJECT_ROOT, "extension")
 OUTPUT_ZIP = os.path.join(PROJECT_ROOT, "dist", "veloce-extension.zip")
 
-EXCLUDED_FILES = {".DS_Store", "Thumbs.db"}
-EXCLUDED_EXTS = {".map"}
+EXCLUDED_FILES = {".DS_Store", "Thumbs.db", "jsconfig.json", "chrome.d.ts"}  # dev-only files
+EXCLUDED_EXTS = {".map", ".ts"}
 
 def package():
     os.makedirs(os.path.dirname(OUTPUT_ZIP), exist_ok=True)

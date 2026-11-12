@@ -1,26 +1,27 @@
 {
   "$schema": "https://json.schemastore.org/chrome-manifest.json",
   "manifest_version": 3,
-  "name": "Veloce - High Speed Download Accelerator",
-  "version": "1.0.3",
-  "description": "Blazingly fast dynamic multi-connection download accelerator and video stream sniffer powered by the Veloce engine.",
+  "name": "Veloce Download Accelerator",
+  "short_name": "Veloce",
+  "version": "1.1.0",
+  "description": "Faster downloads with adaptive multi-connection transfers, plus one-click video and audio grabbing from YouTube, TikTok, Instagram and more.",
+  "minimum_chrome_version": "116",
   "permissions": [
     "downloads",
     "storage",
     "notifications",
-    "webRequest"
+    "webRequest",
+    "contextMenus",
+    "cookies",
+    "activeTab",
+    "alarms"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "web_accessible_resources": [
     {
-      "resources": [
-        "icons/icon16.png",
-        "icons/icon32.png",
-        "icons/icon48.png",
-        "icons/icon128.png"
-      ],
+      "resources": ["icons/icon32.png", "icons/icon48.png"],
       "matches": ["<all_urls>"]
     }
   ],
@@ -29,7 +30,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["http://*/*", "https://*/*"],
       "js": ["src/content.js"],
       "css": ["src/content.css"],
       "run_at": "document_idle"
@@ -37,12 +38,18 @@
   ],
   "action": {
     "default_popup": "src/popup.html",
-    "default_title": "Veloce Download Accelerator",
+    "default_title": "Veloce",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
+    }
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+V" },
+      "description": "Open Veloce"
     }
   },
   "icons": {

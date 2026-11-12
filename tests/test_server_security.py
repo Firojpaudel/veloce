@@ -3,6 +3,8 @@ Unit tests for Veloce Local API Server Security.
 Validates DNS rebinding protection and Origin authorization guards.
 """
 
+import _isolate  # noqa: F401  (must run before engine imports)
+
 import os
 import json
 import urllib.request

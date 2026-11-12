@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 407" width="760" height="407" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-label="Download throughput in MB/s per source for Veloce 1.1, Veloce 1.0 and a single stream">
+<rect width="760" height="407" rx="10" fill="#ffffff"/>
+<text x="20" y="30" font-size="15" font-weight="600" fill="#1f2328">Throughput by source (MB/s, higher is better)</text>
+<rect x="20" y="44" width="12" height="12" rx="3" fill="#2a78d6"/>
+<text x="38" y="54" font-size="12" fill="#59636e">Veloce 1.1 (adaptive)</text>
+<rect x="198.6" y="44" width="12" height="12" rx="3" fill="#eb6834"/>
+<text x="216.6" y="54" font-size="12" fill="#59636e">Veloce 1.0 (fixed 16)</text>
+<rect x="377.2" y="44" width="12" height="12" rx="3" fill="#1baf7a"/>
+<text x="395.2" y="54" font-size="12" fill="#59636e">Single stream (browser-like)</text>
+<line x1="170.0" y1="68" x2="170.0" y2="351" stroke="#d1d9e0" stroke-width="1"/>
+<text x="170.0" y="369" font-size="11" fill="#59636e" text-anchor="middle">0</text>
+<line x1="257.7" y1="68" x2="257.7" y2="351" stroke="#d1d9e0" stroke-width="1"/>
+<text x="257.7" y="369" font-size="11" fill="#59636e" text-anchor="middle">2</text>
+<line x1="345.3" y1="68" x2="345.3" y2="351" stroke="#d1d9e0" stroke-width="1"/>
+<text x="345.3" y="369" font-size="11" fill="#59636e" text-anchor="middle">4</text>
+<line x1="433.0" y1="68" x2="433.0" y2="351" stroke="#d1d9e0" stroke-width="1"/>
+<text x="433.0" y="369" font-size="11" fill="#59636e" text-anchor="middle">6</text>
+<line x1="520.7" y1="68" x2="520.7" y2="351" stroke="#d1d9e0" stroke-width="1"/>
+<text x="520.7" y="369" font-size="11" fill="#59636e" text-anchor="middle">8</text>
+<line x1="608.3" y1="68" x2="608.3" y2="351" stroke="#d1d9e0" stroke-width="1"/>
+<text x="608.3" y="369" font-size="11" fill="#59636e" text-anchor="middle">10</text>
+<line x1="696.0" y1="68" x2="696.0" y2="351" stroke="#d1d9e0" stroke-width="1"/>
+<text x="696.0" y="369" font-size="11" fill="#59636e" text-anchor="middle">12</text>
+<text x="156" y="89.5" font-size="12.5" font-weight="600" fill="#1f2328" text-anchor="end">Internet Archive</text>
+<text x="156" y="104.5" font-size="11" fill="#59636e" text-anchor="end">59 MB</text>
+<path d="M170,74 h229.6 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-229.6 z" fill="#2a78d6"><title>Veloce 1.1 (adaptive) — Internet Archive: 5.33 MB/s</title></path>
+<text x="409.6" y="83" font-size="10.5" fill="#59636e">5.3</text>
+<path d="M170,87 h191.9 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-191.9 z" fill="#eb6834"><title>Veloce 1.0 (fixed 16) — Internet Archive: 4.47 MB/s</title></path>
+<text x="371.9" y="96" font-size="10.5" fill="#59636e">4.5</text>
+<path d="M170,100 h14.8 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-14.8 z" fill="#1baf7a"><title>Single stream (browser-like) — Internet Archive: 0.43 MB/s</title></path>
+<text x="194.8" y="109" font-size="10.5" fill="#59636e">0.4</text>
+<text x="156" y="148.5" font-size="12.5" font-weight="600" fill="#1f2328" text-anchor="end">Kernel.org CDN</text>
+<text x="156" y="163.5" font-size="11" fill="#59636e" text-anchor="end">6.6 MB</text>
+<path d="M170,133 h451.4 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-451.4 z" fill="#2a78d6"><title>Veloce 1.1 (adaptive) — Kernel.org CDN: 10.39 MB/s</title></path>
+<text x="631.4" y="142" font-size="10.5" fill="#59636e">10.4</text>
+<path d="M170,146 h242.3 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-242.3 z" fill="#eb6834"><title>Veloce 1.0 (fixed 16) — Kernel.org CDN: 5.62 MB/s</title></path>
+<text x="422.3" y="155" font-size="10.5" fill="#59636e">5.6</text>
+<path d="M170,159 h480.4 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-480.4 z" fill="#1baf7a"><title>Single stream (browser-like) — Kernel.org CDN: 11.05 MB/s</title></path>
+<text x="660.4" y="168" font-size="10.5" fill="#59636e">11.1</text>
+<text x="156" y="207.5" font-size="12.5" font-weight="600" fill="#1f2328" text-anchor="end">Python.org (Fastly)</text>
+<text x="156" y="222.5" font-size="11" fill="#59636e" text-anchor="end">19 MB</text>
+<path d="M170,192 h362.0 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-362.0 z" fill="#2a78d6"><title>Veloce 1.1 (adaptive) — Python.org (Fastly): 8.35 MB/s</title></path>
+<text x="542.0" y="201" font-size="10.5" fill="#59636e">8.3</text>
+<path d="M170,205 h323.4 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-323.4 z" fill="#eb6834"><title>Veloce 1.0 (fixed 16) — Python.org (Fastly): 7.47 MB/s</title></path>
+<text x="503.4" y="214" font-size="10.5" fill="#59636e">7.5</text>
+<path d="M170,218 h301.5 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-301.5 z" fill="#1baf7a"><title>Single stream (browser-like) — Python.org (Fastly): 6.97 MB/s</title></path>
+<text x="481.5" y="227" font-size="10.5" fill="#59636e">7.0</text>
+<text x="156" y="266.5" font-size="12.5" font-weight="600" fill="#1f2328" text-anchor="end">Apache archive</text>
+<text x="156" y="281.5" font-size="11" fill="#59636e" text-anchor="end">9.4 MB</text>
+<path d="M170,251 h109.5 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-109.5 z" fill="#2a78d6"><title>Veloce 1.1 (adaptive) — Apache archive: 2.59 MB/s</title></path>
+<text x="289.5" y="260" font-size="10.5" fill="#59636e">2.6</text>
+<path d="M170,264 h120.5 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-120.5 z" fill="#eb6834"><title>Veloce 1.0 (fixed 16) — Apache archive: 2.84 MB/s</title></path>
+<text x="300.5" y="273" font-size="10.5" fill="#59636e">2.8</text>
+<path d="M170,277 h58.2 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-58.2 z" fill="#1baf7a"><title>Single stream (browser-like) — Apache archive: 1.42 MB/s</title></path>
+<text x="238.2" y="286" font-size="10.5" fill="#59636e">1.4</text>
+<text x="156" y="325.5" font-size="12.5" font-weight="600" fill="#1f2328" text-anchor="end">SoundHelix</text>
+<text x="156" y="340.5" font-size="11" fill="#59636e" text-anchor="end">8.5 MB</text>
+<path d="M170,310 h61.8 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-61.8 z" fill="#2a78d6"><title>Veloce 1.1 (adaptive) — SoundHelix: 1.50 MB/s</title></path>
+<text x="241.8" y="319" font-size="10.5" fill="#59636e">1.5</text>
+<path d="M170,323 h74.0 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-74.0 z" fill="#eb6834"><title>Veloce 1.0 (fixed 16) — SoundHelix: 1.78 MB/s</title></path>
+<text x="254.0" y="332" font-size="10.5" fill="#59636e">1.8</text>
+<path d="M170,336 h78.0 a4,4 0 0 1 4,4 v3 a4,4 0 0 1 -4,4 h-78.0 z" fill="#1baf7a"><title>Single stream (browser-like) — SoundHelix: 1.87 MB/s</title></path>
+<text x="258.0" y="345" font-size="10.5" fill="#59636e">1.9</text>
+<line x1="170" y1="68" x2="170" y2="351" stroke="#59636e" stroke-width="1"/>
+<text x="740" y="397" font-size="10.5" fill="#59636e" text-anchor="end">Mean of 3 runs · one home connection · 2026-11-12</text>
+</svg>

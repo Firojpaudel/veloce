@@ -2,6 +2,8 @@
 Unit tests for Veloce Dynamic Segmenter Engine.
 """
 
+import _isolate  # noqa: F401  (must run before engine imports)
+
 import os
 import tempfile
 import unittest

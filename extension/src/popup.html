@@ -7,93 +7,130 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="popup-container">
-    <!-- Header -->
-    <header class="header">
+  <div class="app">
+    <header class="topbar">
       <div class="brand">
-        <div class="brand-icon">
-          <img src="../icons/icon32.png" alt="Veloce" width="26" height="26" class="brand-logo-img" />
-        </div>
-        <div class="brand-info">
+        <img src="../icons/icon48.png" alt="" class="brand-logo" width="30" height="30">
+        <div class="brand-text">
           <span class="brand-name">Veloce</span>
-          <div class="status-indicator" id="engine-status">
-            <span class="status-dot online"></span>
-            <span class="status-text">Ready</span>
-          </div>
+          <button class="status" id="engine-status" type="button" title="Engine status">
+            <span class="status-dot"></span><span class="status-label">Connecting…</span>
+          </button>
         </div>
       </div>
-
-      <div class="header-right">
-        <label class="toggle-control" title="Toggle download interception">
-          <span class="toggle-text">Intercept</span>
-          <input type="checkbox" id="intercept-toggle" checked>
-          <span class="switch-track">
-            <span class="switch-thumb"></span>
-          </span>
-        </label>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="btn-open-folder" type="button" title="Open downloads folder" aria-label="Open downloads folder" data-icon="folder"></button>
       </div>
     </header>
 
-    <!-- URL Input -->
-    <div class="input-card">
-      <div class="input-field">
-        <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-        </svg>
-        <input type="text" id="url-input" placeholder="Paste download URL or media link..." spellcheck="false" autocomplete="off" />
-        <button class="btn-icon" id="btn-paste" title="Paste from clipboard">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-        </button>
-      </div>
-      <button class="btn-primary" id="btn-add">Download</button>
-    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" type="button" data-view="downloads" aria-selected="true">
+        <span data-icon="download"></span>Downloads<span class="count" id="count-active" hidden></span>
+      </button>
+      <button class="tab" role="tab" type="button" data-view="page" aria-selected="false">
+        <span data-icon="globe"></span>This page<span class="count" id="count-page" hidden></span>
+      </button>
+      <button class="tab" role="tab" type="button" data-view="settings" aria-selected="false">
+        <span data-icon="settings"></span>Settings
+      </button>
+    </nav>
 
-    <!-- Active Transfers / Queue -->
-    <div class="section-head">
-      <span class="section-label">Active Transfers</span>
-      <div class="section-actions">
-        <button class="btn-link" id="btn-clear-done">Clear Completed</button>
-        <button class="btn-icon-small" id="btn-open-folder" title="Open Downloads Folder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-          </svg>
-        </button>
-        <button class="btn-icon-small" id="btn-refresh" title="Refresh">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-          </svg>
-        </button>
-      </div>
-    </div>
+    <!-- ============================== DOWNLOADS ============================== -->
+    <main class="view" id="view-downloads">
+      <section class="offline-card" id="offline-card" hidden>
+        <div class="offline-icon" data-icon="power"></div>
+        <div class="offline-text">
+          <strong>Engine is off</strong>
+          <span>Files still download through Chrome. Start Veloce for multi-connection speed and video grabbing.</span>
+          <div class="offline-actions">
+            <button class="btn small ghost" id="btn-copy-start" type="button"><span data-icon="copy"></span>Copy start command</button>
+            <button class="btn small ghost" id="btn-retry-engine" type="button"><span data-icon="refresh"></span>Retry</button>
+          </div>
+        </div>
+      </section>
 
-    <div class="tasks-list" id="tasks-list">
-      <div class="empty-state">
-        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-        <div class="empty-title">No Active Transfers</div>
-        <div class="empty-sub">Downloads and media captures will appear here</div>
-      </div>
-    </div>
+      <form class="composer" id="composer" autocomplete="off">
+        <div class="field">
+          <span class="field-icon" data-icon="link"></span>
+          <input type="url" id="url-input" placeholder="Paste a link to download" spellcheck="false" aria-label="Download link">
+          <button class="icon-btn small" id="btn-paste" type="button" title="Paste from clipboard" aria-label="Paste from clipboard" data-icon="clipboard"></button>
+        </div>
+        <button class="btn primary" id="btn-add" type="submit"><span data-icon="download"></span>Get</button>
+      </form>
 
-    <!-- Footer Stats -->
+      <section class="preview" id="preview" hidden aria-live="polite"></section>
+
+      <div class="list-head">
+        <div class="filters" role="radiogroup" aria-label="Filter downloads">
+          <button class="filter" type="button" role="radio" data-filter="all" aria-checked="true">All</button>
+          <button class="filter" type="button" role="radio" data-filter="active" aria-checked="false">Active</button>
+          <button class="filter" type="button" role="radio" data-filter="done" aria-checked="false">Done</button>
+          <button class="filter" type="button" role="radio" data-filter="failed" aria-checked="false">Failed</button>
+        </div>
+        <button class="link-btn" id="btn-clear-done" type="button">Clear finished</button>
+      </div>
+
+      <div class="tasks" id="tasks" role="list"></div>
+
+    </main>
+
+    <!-- ============================== THIS PAGE ============================== -->
+    <main class="view" id="view-page" hidden>
+      <section class="page-card" id="page-card"></section>
+      <div class="list-head"><span class="section-label">Detected media streams</span></div>
+      <div class="tasks" id="streams" role="list"></div>
+    </main>
+
+    <!-- ============================== SETTINGS ============================== -->
+    <main class="view" id="view-settings" hidden>
+      <section class="settings-group">
+        <h2>Browser downloads</h2>
+        <label class="setting">
+          <span class="setting-text"><strong>Catch browser downloads</strong><span>Send downloads to Veloce when the engine is running</span></span>
+          <input type="checkbox" class="switch" id="set-intercept">
+        </label>
+        <label class="setting">
+          <span class="setting-text"><strong>Skip files smaller than</strong><span>Tiny files are faster in Chrome</span></span>
+          <span class="number"><input type="number" id="set-min-size" min="0" max="1000" step="1"> MB</span>
+        </label>
+        <label class="setting column">
+          <span class="setting-text"><strong>Never catch downloads from</strong><span>One site per line, e.g. drive.google.com</span></span>
+          <textarea id="set-excluded" rows="3" spellcheck="false" placeholder="example.com"></textarea>
+        </label>
+      </section>
+
+      <section class="settings-group">
+        <h2>Speed</h2>
+        <label class="setting column">
+          <span class="setting-text"><strong>Maximum connections per file</strong><span>Veloce starts small and adds connections only while they make it faster</span></span>
+          <span class="range"><input type="range" id="set-connections" min="1" max="32" step="1"><output id="out-connections">16</output></span>
+        </label>
+      </section>
+
+      <section class="settings-group">
+        <h2>Privacy &amp; notifications</h2>
+        <label class="setting">
+          <span class="setting-text"><strong>Use my site logins</strong><span>Pass this browser's cookies to the local engine for login-only files and videos (never leaves your computer)</span></span>
+          <input type="checkbox" class="switch" id="set-cookies">
+        </label>
+        <label class="setting">
+          <span class="setting-text"><strong>Notify when downloads finish</strong></span>
+          <input type="checkbox" class="switch" id="set-notify">
+        </label>
+      </section>
+
+      <section class="settings-group">
+        <h2>Engine</h2>
+        <dl class="engine-info" id="engine-info"></dl>
+        <p class="help">Start automatically at login: run <code>veloce autostart enable</code> once.</p>
+      </section>
+    </main>
     <footer class="footer">
-      <div class="footer-stats">
-        <span class="stat-unit" id="speed-meter">Throughput: 0.0 MB/s</span>
-      </div>
-      <div class="footer-meta">
-        <span class="engine-hint" id="engine-mode-hint">Browser Native Mode</span>
-      </div>
+      <span class="footer-speed"><span data-icon="zap"></span><span id="total-speed">0 B/s</span></span>
+      <span class="footer-hint" id="footer-hint">Alt+Shift+V opens Veloce</span>
     </footer>
   </div>
-
+  <div class="toast" id="toast" role="status" hidden></div>
   <script src="popup.js"></script>
 </body>
 </html>

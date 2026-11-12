@@ -95,7 +95,8 @@ BENCHMARK_TARGETS = [
     }
 ]
 
-TMP_DIR = "/tmp/veloce_benchmarks"
+import tempfile
+TMP_DIR = os.path.join(tempfile.gettempdir(), "veloce_benchmarks")
 
 
 def benchmark_single_stream(url: str, output_path: str, max_bytes: int = None) -> Tuple[float, float, int]:
@@ -119,7 +120,7 @@ def benchmark_single_stream(url: str, output_path: str, max_bytes: int = None) -
 
 
 def benchmark_veloce(url: str, output_path: str) -> Tuple[float, float, int]:
-    """Measures Veloce dynamic 16-connection multi-stream engine."""
+    """Measures the Veloce engine (adaptive, up to 16 connections)."""
     start_time = time.time()
     task = DownloadTask(
         url=url,
@@ -162,9 +163,9 @@ def main():
             single_elapsed, single_speed, single_bytes = benchmark_single_stream(url, single_out, target.get("max_bytes"))
             print(f"{single_speed:.2f} MB/s ({single_elapsed:.2f}s, {single_bytes / (1024*1024):.1f} MB)")
         except Exception as e:
-            print(f"FAILED ({e})")
-            single_speed = 0.5
-            single_elapsed = 10.0
+            # Never substitute a made-up baseline: that would inflate the speedup. Skip the source.
+            print(f"FAILED ({e}) — skipping this source")
+            continue
 
         sys.stdout.write("       -> Veloce Engine (16x):     ")
         sys.stdout.flush()

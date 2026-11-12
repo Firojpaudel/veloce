@@ -3,6 +3,8 @@ Integration test for Veloce engine against a local byte-range HTTP server.
 Validates dynamic segmentation, in-place pwrite assembly, and checksum integrity.
 """
 
+import _isolate  # noqa: F401  (must run before engine imports)
+
 import os
 import time
 import hashlib
