@@ -5,131 +5,157 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Veloce</title>
   <link rel="icon" href="/ui/logo.png">
+  <script src="/ui/theme.js"></script>
   <link rel="stylesheet" href="/ui/app.css">
 </head>
 <body>
   <div class="shell">
     <aside class="sidebar" aria-label="Navigation">
       <div class="brand">
-        <img src="/ui/logo.png" alt="" width="32" height="32">
-        <span>Veloce</span>
+        <img src="/ui/logo.png" alt="" width="22" height="22">
+        <span class="brand-name">Veloce</span>
+        <span class="engine-dot" id="engine-dot" role="status" aria-label="Engine status"></span>
       </div>
 
-      <button class="btn primary block" id="btn-new" type="button"><span data-icon="plus"></span>New download</button>
+      <div class="quick">
+        <button class="quick-btn primary" id="btn-new" type="button"><span data-icon="plus"></span><span>New download</span><kbd>N</kbd></button>
+        <button class="quick-btn" id="btn-palette" type="button"><span data-icon="search"></span><span>Search</span><kbd id="palette-kbd">Ctrl K</kbd></button>
+      </div>
 
       <nav class="nav" id="nav">
-        <button class="nav-item" type="button" data-filter="all" aria-current="page"><span data-icon="inbox"></span>All downloads<span class="nav-count" data-count="all"></span></button>
-        <button class="nav-item" type="button" data-filter="active"><span data-icon="download"></span>Downloading<span class="nav-count" data-count="active"></span></button>
-        <button class="nav-item" type="button" data-filter="done"><span data-icon="check-circle"></span>Completed<span class="nav-count" data-count="done"></span></button>
-        <button class="nav-item" type="button" data-filter="failed"><span data-icon="alert"></span>Needs attention<span class="nav-count" data-count="failed"></span></button>
+        <button class="nav-item" type="button" data-filter="all" aria-current="page"><span data-icon="inbox"></span><span>All downloads</span><span class="nav-count" data-count="all"></span></button>
+        <button class="nav-item" type="button" data-filter="active"><span data-icon="download"></span><span>In progress</span><span class="nav-count" data-count="active"></span></button>
+        <button class="nav-item" type="button" data-filter="done"><span data-icon="check-circle"></span><span>Completed</span><span class="nav-count" data-count="done"></span></button>
+        <button class="nav-item" type="button" data-filter="failed"><span data-icon="alert"></span><span>Needs attention</span><span class="nav-count" data-count="failed"></span></button>
 
-        <div class="nav-label">Categories</div>
-        <button class="nav-item" type="button" data-filter="video"><span data-icon="film"></span>Videos<span class="nav-count" data-count="video"></span></button>
-        <button class="nav-item" type="button" data-filter="audio"><span data-icon="music"></span>Music &amp; audio<span class="nav-count" data-count="audio"></span></button>
-        <button class="nav-item" type="button" data-filter="document"><span data-icon="document"></span>Documents<span class="nav-count" data-count="document"></span></button>
-        <button class="nav-item" type="button" data-filter="archive"><span data-icon="archive"></span>Archives<span class="nav-count" data-count="archive"></span></button>
-        <button class="nav-item" type="button" data-filter="app"><span data-icon="app"></span>Programs<span class="nav-count" data-count="app"></span></button>
-        <button class="nav-item" type="button" data-filter="other"><span data-icon="file"></span>Other<span class="nav-count" data-count="other"></span></button>
+        <div class="nav-label">Types</div>
+        <button class="nav-item" type="button" data-filter="video"><span data-icon="film"></span><span>Videos</span><span class="nav-count" data-count="video"></span></button>
+        <button class="nav-item" type="button" data-filter="audio"><span data-icon="music"></span><span>Audio</span><span class="nav-count" data-count="audio"></span></button>
+        <button class="nav-item" type="button" data-filter="document"><span data-icon="document"></span><span>Documents</span><span class="nav-count" data-count="document"></span></button>
+        <button class="nav-item" type="button" data-filter="archive"><span data-icon="archive"></span><span>Archives</span><span class="nav-count" data-count="archive"></span></button>
+        <button class="nav-item" type="button" data-filter="app"><span data-icon="app"></span><span>Programs</span><span class="nav-count" data-count="app"></span></button>
+        <button class="nav-item" type="button" data-filter="other"><span data-icon="file"></span><span>Other</span><span class="nav-count" data-count="other"></span></button>
       </nav>
 
       <div class="sidebar-foot">
-        <button class="nav-item" type="button" data-filter="settings"><span data-icon="settings"></span>Settings</button>
-        <div class="engine-pill" id="engine-pill"><span class="dot"></span><span id="engine-text">Connecting…</span></div>
+        <button class="nav-item" type="button" data-filter="settings"><span data-icon="settings"></span><span>Settings</span></button>
+        <div class="engine-line" id="engine-text">Connecting…</div>
       </div>
     </aside>
 
     <main class="main">
-      <header class="toolbar">
-        <h1 id="view-title">All downloads</h1>
-        <div class="toolbar-right" id="list-tools">
+      <header class="topbar">
+        <div class="title-group">
+          <h1 id="view-title">All downloads</h1>
+          <span class="title-count" id="view-count"></span>
+        </div>
+        <div class="live" id="live" hidden><span class="live-dot"></span><span id="live-text"></span></div>
+        <div class="toolbar" id="list-tools">
           <label class="search">
             <span data-icon="search"></span>
-            <input type="search" id="search" placeholder="Search downloads" aria-label="Search downloads">
+            <input type="search" id="search" placeholder="Filter" aria-label="Filter downloads">
             <kbd>/</kbd>
           </label>
-          <button class="btn ghost" id="btn-folder" type="button"><span data-icon="folder"></span>Open folder</button>
-          <button class="btn ghost" id="btn-clear" type="button" title="Remove finished items from the list (files stay on disk)">Clear finished</button>
+          <button class="icon-btn" id="btn-folder" type="button" title="Open downloads folder" aria-label="Open downloads folder"><span data-icon="folder"></span></button>
+          <button class="btn small ghost" id="btn-clear" type="button" title="Remove finished items from the list — files stay on disk">Clear finished</button>
         </div>
       </header>
 
-      <section class="banner" id="welcome" hidden>
-        <img src="/ui/logo.png" alt="" width="40" height="40">
-        <div class="banner-text">
-          <strong>Veloce is running</strong>
-          <span>It lives in your system tray. Turn on <em>Start at login</em> so browser downloads always get the fast engine — no need to open anything.</span>
+      <section class="welcome" id="welcome" hidden>
+        <div class="welcome-icon"><img src="/ui/logo.png" alt="" width="28" height="28"></div>
+        <div class="welcome-text">
+          <strong>Start Veloce when you log in?</strong>
+          <span>It runs quietly in the tray (~22 MB) so browser downloads always get the fast engine.</span>
         </div>
-        <div class="banner-actions">
-          <button class="btn ghost" id="welcome-dismiss" type="button">Not now</button>
-          <button class="btn primary" id="welcome-enable" type="button">Start at login</button>
-        </div>
+        <button class="btn primary small" id="welcome-enable" type="button">Turn on</button>
+        <button class="icon-btn" id="welcome-dismiss" type="button" aria-label="Dismiss"><span data-icon="x"></span></button>
       </section>
 
       <div class="list-view" id="list-view">
-        <div class="list-head" role="row">
-          <span></span><span>Name</span><span>Size</span><span>Progress</span><span>Speed</span><span></span>
-        </div>
         <div class="rows" id="rows" role="list"></div>
       </div>
 
       <section class="settings" id="settings-view" hidden>
-        <div class="card">
-          <h2>General</h2>
-          <label class="setting">
-            <span class="setting-text"><strong>Start at login</strong><span>Run Veloce quietly in the tray when you sign in</span></span>
-            <input type="checkbox" class="switch" id="set-autostart">
-          </label>
-          <div class="setting">
-            <span class="setting-text"><strong>Download folder</strong><span id="set-folder" class="mono"></span></span>
-            <button class="btn ghost" id="set-open-folder" type="button"><span data-icon="folder"></span>Open</button>
+        <div class="settings-inner">
+          <div class="group">
+            <h2>Appearance</h2>
+            <div class="setting">
+              <span class="setting-text"><strong>Theme</strong><span>Starts by matching your system</span></span>
+              <div class="theme-seg" id="set-theme" role="radiogroup" aria-label="Theme">
+                <button type="button" role="radio" data-theme-value="system" aria-checked="true">System</button>
+                <button type="button" role="radio" data-theme-value="light" aria-checked="false">Light</button>
+                <button type="button" role="radio" data-theme-value="dark" aria-checked="false">Dark</button>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="card">
-          <h2>Speed</h2>
-          <label class="setting column">
-            <span class="setting-text"><strong>Maximum connections per file</strong><span>Veloce starts with one, measures, and adds connections only while they make the download faster</span></span>
-            <span class="range"><input type="range" id="set-connections" min="1" max="32"><output id="out-connections"></output></span>
-          </label>
-        </div>
-        <div class="card">
-          <h2>Video &amp; audio</h2>
-          <div class="setting">
-            <span class="setting-text"><strong>yt-dlp</strong><span id="set-ytdlp"></span></span>
-            <button class="btn ghost" id="set-update" type="button"><span data-icon="refresh"></span>Check for update</button>
+          <div class="group">
+            <h2>General</h2>
+            <label class="setting">
+              <span class="setting-text"><strong>Start at login</strong><span>Run quietly in the tray when you sign in</span></span>
+              <input type="checkbox" class="switch" id="set-autostart">
+            </label>
+            <div class="setting">
+              <span class="setting-text"><strong>Download folder</strong><span id="set-folder" class="mono"></span></span>
+              <button class="btn small" id="set-open-folder" type="button">Open</button>
+            </div>
           </div>
-          <div class="setting">
-            <span class="setting-text"><strong>ffmpeg</strong><span id="set-ffmpeg"></span></span>
+          <div class="group">
+            <h2>Speed</h2>
+            <label class="setting column">
+              <span class="setting-text"><strong>Maximum connections per file</strong><span>Veloce starts with one, measures, and adds more only while they make the download faster.</span></span>
+              <span class="range"><input type="range" id="set-connections" min="1" max="32"><output id="out-connections"></output></span>
+            </label>
           </div>
+          <div class="group">
+            <h2>Video &amp; audio</h2>
+            <div class="setting">
+              <span class="setting-text"><strong>yt-dlp</strong><span id="set-ytdlp"></span></span>
+              <button class="btn small" id="set-update" type="button">Check for update</button>
+            </div>
+            <div class="setting">
+              <span class="setting-text"><strong>ffmpeg</strong><span id="set-ffmpeg"></span></span>
+            </div>
+          </div>
+          <div class="group">
+            <h2>Browser extension</h2>
+            <p class="group-text">Catches browser downloads and adds a Download button to videos on YouTube, TikTok, Instagram and more. Load the <code>extension</code> folder at <code>chrome://extensions</code> with Developer mode on.</p>
+          </div>
+          <p class="about" id="about"></p>
         </div>
-        <div class="card">
-          <h2>Browser extension</h2>
-          <p class="card-text">The extension catches browser downloads and adds a Download button to videos on YouTube, TikTok, Instagram and more. Load the <code>extension</code> folder from <code>chrome://extensions</code> with Developer mode on.</p>
-        </div>
-        <p class="about" id="about"></p>
       </section>
     </main>
   </div>
 
-  <dialog class="dialog" id="add-dialog" aria-labelledby="add-title">
-    <form method="dialog" class="dialog-inner" id="add-form">
-      <header class="dialog-head">
-        <h2 id="add-title">New download</h2>
-        <button class="icon-btn" type="button" id="add-close" aria-label="Close"><span data-icon="x"></span></button>
-      </header>
-      <div class="field">
+  <dialog class="sheet" id="add-dialog" aria-label="New download">
+    <form method="dialog" class="sheet-inner" id="add-form">
+      <div class="sheet-input">
         <span data-icon="link"></span>
-        <input type="url" id="add-url" placeholder="Paste a link — file, video page or playlist" aria-label="Link" spellcheck="false" autocomplete="off" required>
+        <input type="url" id="add-url" placeholder="Paste a link — file, video, or playlist" aria-label="Link" spellcheck="false" autocomplete="off" required>
       </div>
-      <div class="preview" id="add-preview" aria-live="polite">
-        <p class="hint">Tip: press <kbd>Ctrl</kbd>+<kbd>V</kbd> anywhere in Veloce to start a download from your clipboard.</p>
-      </div>
-      <footer class="dialog-foot">
-        <button class="btn ghost" type="button" id="add-cancel">Cancel</button>
-        <button class="btn primary" type="submit" id="add-go" disabled><span data-icon="download"></span>Download</button>
+      <div class="preview" id="add-preview" aria-live="polite"></div>
+      <footer class="sheet-foot">
+        <span class="hints"><kbd>Esc</kbd> close</span>
+        <div class="sheet-actions">
+          <button class="btn" type="button" id="add-cancel">Cancel</button>
+          <button class="btn primary" type="submit" id="add-go" disabled><span>Download</span><kbd class="on-primary">↵</kbd></button>
+        </div>
       </footer>
+      <button type="button" id="add-close" hidden></button>
     </form>
   </dialog>
 
-  <div class="toast" id="toast" role="status" hidden></div>
+  <dialog class="sheet palette" id="palette" aria-label="Command palette">
+    <div class="sheet-inner">
+      <div class="sheet-input">
+        <span data-icon="search"></span>
+        <input type="text" id="palette-input" placeholder="Search downloads or type a command…" aria-label="Command" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="palette-list" id="palette-list" role="listbox"></div>
+      <footer class="sheet-foot"><span class="hints"><kbd>↑</kbd><kbd>↓</kbd> navigate <kbd>↵</kbd> run <kbd>Esc</kbd> close</span></footer>
+    </div>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
   <script src="/ui/app.js"></script>
 </body>
 </html>

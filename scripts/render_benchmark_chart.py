@@ -84,7 +84,10 @@ def render(t: dict) -> str:
 
 
 if __name__ == "__main__":
+    # The README uses the light chart (its own white surface reads well on GitHub's dark theme too).
     for name, theme in THEMES.items():
+        if name != "light":
+            continue
         with open(os.path.join(ROOT, "assets", f"benchmark-{name}.svg"), "w", encoding="utf-8") as fh:
             fh.write(render(theme))
         print(f"wrote assets/benchmark-{name}.svg")

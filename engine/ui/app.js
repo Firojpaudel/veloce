@@ -9,6 +9,7 @@
     inbox: ["M22 12h-6l-2 3h-4l-2-3H2", "M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"],
     download: ["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"],
     "check-circle": ["M22 11.08V12a10 10 0 1 1-5.93-9.14", "M22 4 12 14.01l-3-3"],
+    check: ["M20 6 9 17l-5-5"],
     alert: ["M12 9v4", "M12 17h.01", "M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"],
     film: ["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M7 3v18", "M17 3v18", "M3 12h18", "M3 7.5h4", "M3 16.5h4", "M17 7.5h4", "M17 16.5h4"],
     music: ["M9 18V5l12-2v13", "M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0z", "M21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"],
@@ -20,21 +21,22 @@
     settings: ["M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z", "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
     search: ["M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z", "M21 21l-4.3-4.3"],
     folder: ["M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"],
+    sweep: ["M3 6h18", "M8 6V4h8v2", "M6 6l1 14h10l1-14", "M10 11v6", "M14 11v6"],
     x: ["M18 6 6 18", "M6 6l12 12"],
     link: ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71", "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"],
-    refresh: ["M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", "M21 3v5h-5", "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", "M8 16H3v5"],
-    pause: ["M6 4h4v16H6z", "M14 4h4v16h-4z"],
-    play: ["M6 3l14 9-14 9V3z"],
+    pause: ["M8 5v14", "M16 5v14"],
+    play: ["M7 4l13 8-13 8V4z"],
     retry: ["M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5"],
     copy: ["M8 8h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z", "M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"],
     trash: ["M3 6h18", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"],
     zap: ["M13 2 3 14h9l-1 8 10-12h-9l1-8z"],
+    arrow: ["M5 12h14", "M12 5l7 7-7 7"],
   };
   function icon(name, size = 16) {
     const ns = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(ns, "svg");
     for (const [k, v] of Object.entries({ viewBox: "0 0 24 24", width: size, height: size, fill: "none", stroke: "currentColor",
-      "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) svg.setAttribute(k, v);
+      "stroke-width": 1.75, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) svg.setAttribute(k, v);
     for (const d of ICONS[name] || ICONS.file) {
       const p = document.createElementNS(ns, "path");
       p.setAttribute("d", d);
@@ -54,7 +56,10 @@
     for (const c of children.flat()) if (c != null && c !== false) el.append(c instanceof Node ? c : String(c));
     return el;
   }
-  document.querySelectorAll("[data-icon]").forEach((el) => el.prepend(icon(el.dataset.icon, el.closest(".nav") ? 17 : 16)));
+  document.querySelectorAll("[data-icon]").forEach((el) => el.prepend(icon(el.dataset.icon, 16)));
+
+  const isMac = /mac/i.test(navigator.userAgentData?.platform || navigator.platform || "");
+  if (isMac) document.getElementById("palette-kbd").textContent = "⌘K";
 
   // ---------------------------------------------------------------- utilities
   const $ = (id) => document.getElementById(id);
@@ -76,17 +81,18 @@
   const fmtEta = (s) => {
     if (!s || s <= 0 || !isFinite(s)) return "";
     s = Math.round(s);
-    if (s < 60) return `${s}s left`;
-    if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s left`;
-    return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m left`;
+    if (s < 60) return `${s}s`;
+    if (s < 3600) return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+    return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
   };
-  const fmtAgo = (ts) => {
+  const fmtTime = (ts) => {
     if (!ts) return "";
     const s = Math.max(0, Date.now() / 1000 - ts);
     if (s < 60) return "just now";
-    if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-    if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
-    return new Date(ts * 1000).toLocaleDateString();
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    const d = new Date(ts * 1000);
+    if (s < 86400 * 2) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return d.toLocaleDateString([], { month: "short", day: "numeric" });
   };
   const fmtDuration = (s) => {
     if (!s) return "";
@@ -101,14 +107,10 @@
     set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } },
   };
 
-  let toastTimer = 0;
   function toast(text, kind = "") {
-    const el = $("toast");
-    el.className = `toast ${kind}`;
-    el.replaceChildren(icon(kind === "error" ? "alert" : "check-circle", 16), h("span", { text }));
-    el.hidden = false;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { el.hidden = true; }, 2800);
+    const el = h("div", { class: `toast ${kind}`, role: "status" }, icon(kind === "error" ? "alert" : "check", 15), h("span", { text }));
+    $("toasts").append(el);
+    setTimeout(() => el.remove(), 3200);
   }
 
   const EXT_TYPES = {
@@ -140,8 +142,8 @@
   // ---------------------------------------------------------------- state & navigation
   const state = { tasks: [], filter: "all", search: "", selected: null, online: null, settings: null };
   const TITLES = {
-    all: "All downloads", active: "Downloading", done: "Completed", failed: "Needs attention", video: "Videos",
-    audio: "Music & audio", document: "Documents", archive: "Archives", app: "Programs", other: "Other", settings: "Settings",
+    all: "All downloads", active: "In progress", done: "Completed", failed: "Needs attention", video: "Videos",
+    audio: "Audio", document: "Documents", archive: "Archives", app: "Programs", other: "Other", settings: "Settings",
   };
 
   function matches(t, filter) {
@@ -155,13 +157,16 @@
   document.querySelectorAll(".nav-item").forEach((b) => b.addEventListener("click", () => go(b.dataset.filter)));
   function go(filter) {
     state.filter = filter;
-    document.querySelectorAll(".nav-item").forEach((b) => b.toggleAttribute("aria-current", b.dataset.filter === filter));
-    document.querySelectorAll(".nav-item[aria-current]").forEach((b) => b.setAttribute("aria-current", "page"));
+    document.querySelectorAll(".nav-item").forEach((b) => {
+      if (b.dataset.filter === filter) b.setAttribute("aria-current", "page");
+      else b.removeAttribute("aria-current");
+    });
     $("view-title").textContent = TITLES[filter];
     const settings = filter === "settings";
     $("settings-view").hidden = !settings;
     $("list-view").hidden = settings;
     $("list-tools").hidden = settings;
+    $("view-count").hidden = settings;
     if (settings) loadSettings();
     else render();
   }
@@ -181,14 +186,26 @@
   function setOnline(online) {
     if (state.online === online) return;
     state.online = online;
-    const pill = $("engine-pill");
-    pill.classList.toggle("online", online);
-    pill.classList.toggle("offline", !online);
-    $("engine-text").textContent = online ? `Running${state.settings ? ` · v${state.settings.version}` : ""}` : "Engine stopped";
+    const dot = $("engine-dot");
+    dot.classList.toggle("online", online);
+    dot.classList.toggle("offline", !online);
+    dot.title = online ? "Engine running" : "Engine stopped";
+    $("engine-text").textContent = online ? `Engine running${state.settings ? ` · v${state.settings.version}` : ""}` : "Engine stopped";
   }
 
   // ---------------------------------------------------------------- list rendering
   const rows = new Map();
+  const heads = new Map();
+
+  function dayGroup(ts) {
+    if (!ts) return "Earlier";
+    const d = new Date(ts * 1000), now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
+    if (ts >= start) return "Today";
+    if (ts >= start - 86400) return "Yesterday";
+    if (ts >= start - 6 * 86400) return d.toLocaleDateString([], { weekday: "long" });
+    return "Earlier";
+  }
 
   function render() {
     const list = $("rows");
@@ -196,61 +213,78 @@
     for (const t of state.tasks) for (const k of Object.keys(counts)) if (matches(t, k)) counts[k]++;
     document.querySelectorAll("[data-count]").forEach((el) => { el.textContent = counts[el.dataset.count] || ""; });
 
+    const running = state.tasks.filter((t) => t.status === "DOWNLOADING");
+    const speed = running.reduce((s, t) => s + (t.speed || 0), 0);
+    $("live").hidden = !running.length;
+    $("live-text").textContent = `${running.length} downloading · ${fmtBytes(speed)}/s`;
+    document.title = running.length ? `↓ ${fmtBytes(speed)}/s · Veloce` : "Veloce";
+
     const q = state.search.toLowerCase();
     const visible = state.tasks.filter((t) => matches(t, state.filter) && (!q || (t.filename || t.url || "").toLowerCase().includes(q)));
-    document.title = counts.active ? `(${counts.active}) Veloce` : "Veloce";
+    $("view-count").textContent = visible.length ? String(visible.length) : "";
 
     if (state.online === false) {
       rows.clear();
-      list.replaceChildren(emptyView("alert", "The Veloce engine stopped", "Start Veloce again from your apps menu or desktop, then reload this page."));
+      list.replaceChildren(emptyView("alert", "Veloce isn't running", "Start Veloce from your apps menu or desktop, then reload this page."));
       return;
     }
     if (!visible.length) {
       rows.clear();
       list.replaceChildren(q
         ? emptyView("search", "No matches", `Nothing in ${TITLES[state.filter].toLowerCase()} matches “${state.search}”.`)
-        : state.filter === "all"
-          ? emptyView("download", "Your downloads will appear here", "Paste a link with Ctrl+V, use New download, or click Download on any video with the browser extension.", true)
+        : state.filter === "all" ? emptyView("download", "No downloads yet", "Paste a link anywhere in this window, or press Download on any video with the browser extension.", true)
           : emptyView(TYPE_ICON[state.filter] || "inbox", `Nothing in ${TITLES[state.filter].toLowerCase()}`, ""));
       return;
     }
 
     const ids = new Set(visible.map((t) => t.id));
-    for (const id of [...rows.keys()]) if (!ids.has(id)) { rows.get(id).el.remove(); rows.delete(id); }
-    list.querySelector(".empty")?.remove();
-    visible.forEach((t, i) => {
+    for (const id of [...rows.keys()]) if (!ids.has(id)) rows.delete(id);
+
+    const desired = [];
+    let lastGroup = null;
+    for (const t of visible) {
+      const group = dayGroup(t.created_at);
+      if (group !== lastGroup) {
+        if (!heads.has(group)) heads.set(group, h("div", { class: "group-head", text: group }));
+        desired.push(heads.get(group));
+        lastGroup = group;
+      }
       let row = rows.get(t.id);
       if (!row) { row = buildRow(t); rows.set(t.id, row); }
       updateRow(row, t);
-      if (list.children[i] !== row.el) list.insertBefore(row.el, list.children[i] || null);
-    });
+      desired.push(row.el);
+    }
+    // Only touch the DOM order when it actually changed (keeps hover/focus stable during live updates)
+    const current = [...list.children];
+    if (current.length !== desired.length || current.some((el, i) => el !== desired[i])) list.replaceChildren(...desired);
   }
 
-  function emptyView(iconName, title, text, withButton = false) {
+  function emptyView(iconName, title, text, withKeys = false) {
     return h("div", { class: "empty" },
-      h("div", { class: "empty-art" }, icon(iconName, 28)),
+      h("div", { class: "empty-art" }, icon(iconName, 20)),
       h("strong", { text: title }),
       text ? h("span", { text }) : null,
-      withButton ? h("button", { class: "btn primary", type: "button", onclick: () => openAdd() }, icon("plus"), "New download") : null);
+      withKeys ? h("div", { class: "empty-keys" },
+        h("span", {}, h("kbd", { text: "N" }), "New download"),
+        h("span", {}, h("kbd", { text: isMac ? "⌘V" : "Ctrl V" }), "Paste a link"),
+        h("span", {}, h("kbd", { text: isMac ? "⌘K" : "Ctrl K" }), "Search")) : null);
   }
 
   function buildRow(t) {
     const r = {};
     r.tile = h("div", { class: "tile" });
     r.name = h("div", { class: "name" });
-    r.sub = h("div", { class: "sub" });
-    r.size = h("div", { class: "size" });
-    r.state = h("span", { class: "state" });
-    r.pct = h("span", {});
+    r.meta = h("div", { class: "meta" });
+    r.statusText = h("span", {});
+    r.statusRight = h("span", { class: "right" });
     r.bar = h("div", { class: "bar" }, h("b", {}));
-    r.speed = h("div", { class: "speed" });
+    r.size = h("div", { class: "size" });
     r.actions = h("div", { class: "actions" });
     r.el = h("div", { class: "row", role: "listitem", tabindex: "0" },
       r.tile,
-      h("div", { class: "name-cell" }, r.name, r.sub),
+      h("div", { class: "name-cell" }, r.name, r.meta),
+      h("div", { class: "status" }, h("div", { class: "status-line" }, h("span", { class: "sdot" }), r.statusText, r.statusRight), r.bar),
       r.size,
-      h("div", { class: "prog" }, h("div", { class: "prog-label" }, r.state, r.pct), r.bar),
-      r.speed,
       r.actions);
     r.el.addEventListener("click", () => select(t.id));
     r.el.addEventListener("dblclick", () => { if (r.task?.status === "COMPLETED") act(t.id, "open"); });
@@ -269,52 +303,55 @@
     r.el.dataset.state = st;
     r.el.classList.toggle("selected", state.selected === t.id);
     const type = typeOf(t);
-    if (r.tile.dataset.type !== type) { r.tile.dataset.type = type; r.tile.replaceChildren(icon(TYPE_ICON[type], 18)); }
+    if (r.tile.dataset.type !== type) { r.tile.dataset.type = type; r.tile.replaceChildren(icon(TYPE_ICON[type], 15)); }
     r.name.textContent = t.filename || t.title || t.url;
     r.name.title = t.file_path || t.url;
     r.name.classList.toggle("missing", t.status === "FILE_REMOVED");
 
-    const subParts = [t.playlist ? `Playlist · ${t.playlist}` : hostOf(t.page_url || t.url), fmtAgo(t.created_at)];
-    if (t.status === "ERROR" && t.error) r.sub.replaceChildren(h("span", { class: "err", text: t.error }));
-    else r.sub.textContent = subParts.filter(Boolean).join(" · ");
+    if (t.status === "ERROR" && t.error) r.meta.replaceChildren(h("span", { class: "err", text: t.error }));
+    else r.meta.textContent = [t.playlist ? `${t.playlist}` : hostOf(t.page_url || t.url), fmtTime(t.created_at)].filter(Boolean).join(" · ");
+
+    const pct = Math.floor(t.percent || 0);
+    const label = {
+      QUEUED: "Queued", INITIALIZING: "Starting…", PAUSED: `Paused · ${pct}%`, COMPLETED: "Done",
+      ERROR: "Failed", CANCELLED: "Cancelled", FILE_REMOVED: "File deleted",
+      DOWNLOADING: t.total_size ? `${pct}%` : fmtBytes(t.downloaded),
+    }[t.status] || t.status;
+    r.statusText.textContent = label;
+    r.statusRight.textContent = t.status === "DOWNLOADING"
+      ? [t.speed ? `${fmtBytes(t.speed)}/s` : "", fmtEta(t.eta)].filter(Boolean).join(" · ") : "";
+
+    const showBar = ACTIVE.has(t.status) || t.status === "PAUSED";
+    r.bar.hidden = !showBar;
+    if (showBar) {
+      const segs = t.segments || [];
+      if (t.status === "DOWNLOADING" && segs.length > 1 && t.total_size) {
+        r.bar.classList.remove("indeterminate");
+        r.bar.replaceChildren(...segs.map((s) => {
+          const i = document.createElement("i");
+          i.style.left = `${(s.start / t.total_size) * 100}%`;
+          i.style.width = `${Math.max(0.4, ((s.current - s.start) / t.total_size) * 100)}%`;
+          return i;
+        }));
+        r.bar.title = `${segs.filter((s) => s.active).length} connections`;
+      } else {
+        if (!r.bar.querySelector("b")) r.bar.replaceChildren(h("b", {}));
+        r.bar.classList.toggle("indeterminate", ACTIVE.has(t.status) && !t.total_size);
+        r.bar.firstChild.style.width = `${Math.min(100, t.percent || 0)}%`;
+        r.bar.title = "";
+      }
+    }
 
     r.size.textContent = t.total_size ? fmtBytes(t.total_size) : t.downloaded ? fmtBytes(t.downloaded) : "—";
 
-    r.state.textContent = {
-      QUEUED: "Queued", INITIALIZING: "Starting", DOWNLOADING: t.total_size ? `${fmtBytes(t.downloaded)} of ${fmtBytes(t.total_size)}` : "Downloading",
-      PAUSED: "Paused", COMPLETED: "Completed", ERROR: "Failed", CANCELLED: "Cancelled", FILE_REMOVED: "File deleted",
-    }[t.status] || t.status;
-    r.pct.textContent = ACTIVE.has(t.status) || t.status === "PAUSED" ? (t.total_size ? `${Math.floor(t.percent || 0)}%` : "") : "";
-
-    const segs = t.segments || [];
-    if (t.status === "DOWNLOADING" && segs.length > 1 && t.total_size) {
-      r.bar.classList.remove("indeterminate");
-      r.bar.replaceChildren(...segs.map((s) => {
-        const i = document.createElement("i");
-        i.style.left = `${(s.start / t.total_size) * 100}%`;
-        i.style.width = `${Math.max(0.4, ((s.current - s.start) / t.total_size) * 100)}%`;
-        return i;
-      }));
-      r.bar.title = `${segs.filter((s) => s.active).length} connections working`;
-    } else {
-      if (!r.bar.querySelector("b")) r.bar.replaceChildren(h("b", {}));
-      r.bar.classList.toggle("indeterminate", ACTIVE.has(t.status) && !t.total_size);
-      r.bar.firstChild.style.width = `${t.status === "COMPLETED" ? 100 : Math.min(100, t.percent || 0)}%`;
-      r.bar.title = "";
-    }
-
-    r.speed.replaceChildren(...(t.status === "DOWNLOADING"
-      ? [h("span", { text: t.speed ? `${fmtBytes(t.speed)}/s` : "…" }), h("small", { text: fmtEta(t.eta) })]
-      : [h("span", { text: "" })]));
-
     const actions = [];
     if (ACTIVE.has(t.status)) {
-      if (t.kind !== "media" && t.status === "DOWNLOADING") actions.push(["pause", "Pause", "pause"]);
+      if (t.kind !== "media" && t.status === "DOWNLOADING") actions.push(["pause", "Pause (Space)", "pause"]);
       actions.push(["x", "Cancel", "remove", "danger"]);
     } else if (t.status === "PAUSED") {
-      actions.push(["play", "Resume", "resume"], ["x", "Cancel", "remove", "danger"]);
+      actions.push(["play", "Resume (Space)", "resume"], ["x", "Cancel", "remove", "danger"]);
     } else if (t.status === "COMPLETED") {
-      actions.push(["folder", "Show in folder", "open"], ["copy", "Copy link", "copy"], ["trash", "Remove from list (keeps the file)", "remove"]);
+      actions.push(["folder", "Show in folder (Enter)", "open"], ["copy", "Copy link", "copy"], ["trash", "Remove from list — keeps the file", "remove"]);
     } else {
       actions.push(["retry", "Try again", "resume"], ["copy", "Copy link", "copy"], ["trash", "Remove from list", "remove"]);
     }
@@ -324,7 +361,7 @@
       r.actions.replaceChildren(...actions.map(([ic, title, action, cls]) => h("button", {
         class: `icon-btn${cls ? " " + cls : ""}`, type: "button", title, "aria-label": title,
         onclick: (e) => { e.stopPropagation(); act(t.id, action); },
-      }, icon(ic, 16))));
+      }, icon(ic, 15))));
     }
   }
 
@@ -336,7 +373,7 @@
     }
     try {
       await api(`/tasks/${encodeURIComponent(id)}/${action}`, {});
-      if (action === "remove" && t?.status === "COMPLETED") toast("Removed from list — the file is still in your folder");
+      if (action === "remove" && t?.status === "COMPLETED") toast("Removed from list — the file is still on disk");
     } catch (e) {
       toast(e.message, "error");
     }
@@ -345,19 +382,35 @@
 
   // ---------------------------------------------------------------- toolbar
   $("search").addEventListener("input", (e) => { state.search = e.target.value.trim(); render(); });
-  $("btn-folder").addEventListener("click", () => api("/open-folder", {}).catch((e) => toast(e.message, "error")));
-  $("btn-clear").addEventListener("click", async () => {
-    const res = await api("/tasks/clear-completed", {}).catch((e) => ({ error: e.message }));
-    if (res.error) toast(res.error, "error");
-    else toast(res.cleared ? `Cleared ${res.cleared} finished item${res.cleared === 1 ? "" : "s"} — files stay on disk` : "Nothing to clear");
+  const openFolder = () => api("/open-folder", {}).catch((e) => toast(e.message, "error"));
+  async function clearFinished() {
+    try {
+      const res = await api("/tasks/clear-completed", {});
+      toast(res.cleared ? `Cleared ${res.cleared} finished item${res.cleared === 1 ? "" : "s"} — files stay on disk` : "Nothing to clear");
+    } catch (e) { toast(e.message, "error"); }
     refresh();
-  });
+  }
+  $("btn-folder").addEventListener("click", openFolder);
+  $("btn-clear").addEventListener("click", clearFinished);
 
   // ---------------------------------------------------------------- keyboard & paste-anywhere
+  const anyDialogOpen = () => $("add-dialog").open || $("palette").open;
   document.addEventListener("keydown", (e) => {
     const typing = e.target.closest("input, textarea, [contenteditable]");
-    if (e.key === "/" && !typing) { e.preventDefault(); $("search").focus(); return; }
-    if (typing || $("add-dialog").open) return;
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); return; }
+    if (typing || anyDialogOpen()) return;
+    if (e.key === "/") { e.preventDefault(); $("search").focus(); return; }
+    if (e.key.toLowerCase() === "n" && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); openAdd(); return; }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "j" || e.key === "k") {
+      e.preventDefault();
+      const order = [...$("rows").querySelectorAll(".row")].map((el) => [...rows].find(([, r]) => r.el === el)?.[0]).filter(Boolean);
+      if (!order.length) return;
+      const i = order.indexOf(state.selected);
+      const next = order[Math.max(0, Math.min(order.length - 1, i + ((e.key === "ArrowDown" || e.key === "j") ? 1 : -1)))] || order[0];
+      select(next);
+      rows.get(next)?.el.scrollIntoView({ block: "nearest" });
+      return;
+    }
     const sel = state.tasks.find((t) => t.id === state.selected);
     if (!sel) return;
     if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); act(sel.id, "remove"); }
@@ -366,12 +419,89 @@
     if (e.key === " " && sel.status === "PAUSED") { e.preventDefault(); act(sel.id, "resume"); }
   });
   document.addEventListener("paste", (e) => {
-    if (e.target.closest("input, textarea") || $("add-dialog").open) return;
+    if (e.target.closest("input, textarea") || anyDialogOpen()) return;
     const text = (e.clipboardData?.getData("text") || "").trim();
     if (isHttp(text)) { e.preventDefault(); openAdd(text); }
   });
 
-  // ---------------------------------------------------------------- new download dialog
+  // ---------------------------------------------------------------- command palette
+  const palette = $("palette");
+  const pInput = $("palette-input");
+  const pList = $("palette-list");
+  let pItems = [];
+  let pIndex = 0;
+  $("btn-palette").addEventListener("click", () => openPalette());
+
+  function commands() {
+    return [
+      { label: "New download", icon: "plus", hint: "N", run: () => openAdd() },
+      { label: "Open downloads folder", icon: "folder", run: openFolder },
+      { label: "Clear finished downloads", icon: "sweep", run: clearFinished },
+      { label: "Theme: follow system", icon: "settings", run: () => setTheme("system") },
+      { label: "Theme: light", icon: "settings", run: () => setTheme("light") },
+      { label: "Theme: dark", icon: "settings", run: () => setTheme("dark") },
+      { label: "Pause all", icon: "pause", run: () => bulk("pause", (t) => t.status === "DOWNLOADING" && t.kind !== "media") },
+      { label: "Resume all", icon: "play", run: () => bulk("resume", (t) => t.status === "PAUSED") },
+      { label: "Retry failed downloads", icon: "retry", run: () => bulk("resume", (t) => t.status === "ERROR") },
+      ...Object.entries(TITLES).map(([key, title]) => ({ label: `Go to ${title}`, icon: key === "settings" ? "settings" : "arrow", run: () => go(key) })),
+    ];
+  }
+  async function bulk(action, pick) {
+    const targets = state.tasks.filter(pick);
+    await Promise.all(targets.map((t) => api(`/tasks/${encodeURIComponent(t.id)}/${action}`, {}).catch(() => {})));
+    toast(targets.length ? `${targets.length} download${targets.length === 1 ? "" : "s"} updated` : "Nothing to do");
+    refresh();
+  }
+
+  function openPalette() {
+    if ($("add-dialog").open) return;
+    pInput.value = "";
+    drawPalette();
+    palette.showModal();
+    pInput.focus();
+  }
+  function drawPalette() {
+    const q = pInput.value.trim().toLowerCase();
+    const cmds = commands().filter((c) => !q || c.label.toLowerCase().includes(q));
+    const files = q ? state.tasks.filter((t) => (t.filename || "").toLowerCase().includes(q)).slice(0, 8) : [];
+    pItems = [...cmds.map((c) => ({ ...c, group: "Commands" })), ...files.map((t) => ({
+      group: "Downloads", icon: TYPE_ICON[typeOf(t)], label: t.filename, sub: t.status === "COMPLETED" ? "Show in folder" : TITLES[stateOf(t.status) === "active" ? "active" : "all"],
+      run: () => { go("all"); select(t.id); if (t.status === "COMPLETED") act(t.id, "open"); },
+    }))];
+    if (isHttp(pInput.value.trim())) pItems.unshift({ group: "Link", icon: "download", label: `Download ${pInput.value.trim()}`, run: () => openAdd(pInput.value.trim()) });
+    pIndex = 0;
+    const nodes = [];
+    let last = null;
+    pItems.forEach((item, i) => {
+      if (item.group !== last) { nodes.push(h("div", { class: "palette-group", text: item.group })); last = item.group; }
+      const el = h("div", { class: "palette-item", role: "option", "aria-selected": String(i === pIndex) },
+        icon(item.icon, 15), h("span", { class: "label", text: item.label }),
+        item.sub ? h("span", { class: "sub", text: item.sub }) : null, item.hint ? h("kbd", { text: item.hint }) : null);
+      el.addEventListener("mousemove", () => highlight(i));
+      el.addEventListener("click", () => runPalette(i));
+      nodes.push(el);
+    });
+    pList.replaceChildren(...(nodes.length ? nodes : [h("div", { class: "palette-empty", text: "No results" })]));
+  }
+  function highlight(i) {
+    pIndex = i;
+    pList.querySelectorAll(".palette-item").forEach((el, j) => el.setAttribute("aria-selected", String(j === i)));
+    pList.querySelectorAll(".palette-item")[i]?.scrollIntoView({ block: "nearest" });
+  }
+  function runPalette(i) {
+    const item = pItems[i];
+    palette.close();
+    item?.run();
+  }
+  pInput.addEventListener("input", drawPalette);
+  pInput.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); highlight(Math.min(pItems.length - 1, pIndex + 1)); }
+    if (e.key === "ArrowUp") { e.preventDefault(); highlight(Math.max(0, pIndex - 1)); }
+    if (e.key === "Enter") { e.preventDefault(); runPalette(pIndex); }
+  });
+  palette.addEventListener("click", (e) => { if (e.target === palette) palette.close(); });
+
+  // ---------------------------------------------------------------- new download sheet
   const dialog = $("add-dialog");
   const urlInput = $("add-url");
   const preview = $("add-preview");
@@ -381,12 +511,12 @@
   let debounce = 0;
 
   $("btn-new").addEventListener("click", () => openAdd());
-  $("add-close").addEventListener("click", () => dialog.close());
   $("add-cancel").addEventListener("click", () => dialog.close());
   dialog.addEventListener("close", () => { seq++; primary = null; });
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
   function openAdd(url = "") {
+    if (palette.open) palette.close();
     urlInput.value = url;
     resetPreview();
     dialog.showModal();
@@ -394,22 +524,21 @@
     if (url) analyze(url);
   }
   function resetPreview() {
-    primary = null;
-    goBtn.disabled = true;
-    preview.replaceChildren(h("p", { class: "hint" }, "Tip: press ", h("kbd", { text: "Ctrl" }), "+", h("kbd", { text: "V" }), " anywhere in Veloce to start a download from your clipboard."));
+    setPrimary(null);
+    preview.replaceChildren(h("p", { class: "hint", text: "Veloce checks the link first and shows the real file name, size and — for video pages — every quality and playlist." }));
   }
   urlInput.addEventListener("input", () => {
     clearTimeout(debounce);
     const url = urlInput.value.trim();
     if (!isHttp(url)) { resetPreview(); return; }
-    debounce = setTimeout(() => analyze(url), 400);
+    debounce = setTimeout(() => analyze(url), 350);
   });
   $("add-form").addEventListener("submit", (e) => { e.preventDefault(); primary?.(); });
 
   function setPrimary(fn, label = "Download") {
     primary = fn;
     goBtn.disabled = !fn;
-    goBtn.replaceChildren(icon("download"), label);
+    goBtn.firstElementChild.textContent = label;
   }
 
   async function analyze(url) {
@@ -420,7 +549,7 @@
     let info;
     try { info = await api("/inspect", { url }); } catch (e) {
       if (my !== seq) return;
-      preview.replaceChildren(h("p", { class: "note", text: `Couldn't check this link: ${e.message}. You can still try to download it.` }));
+      preview.replaceChildren(h("p", { class: "note", text: `Couldn't check this link: ${e.message}. You can still try downloading it.` }));
       setPrimary(() => startFile(url), "Try anyway");
       return;
     }
@@ -433,19 +562,19 @@
     const type = typeOf({ filename: info.filename, content_type: info.content_type });
     const name = h("input", { class: "name-input", value: info.filename, "aria-label": "File name", spellcheck: "false" });
     preview.replaceChildren(
-      h("div", { class: "file-head" }, h("div", { class: "tile", "data-type": type }, icon(TYPE_ICON[type], 18)), name),
+      h("div", { class: "file-head" }, h("div", { class: "tile", "data-type": type }, icon(TYPE_ICON[type], 17)), name),
       h("div", { class: "pills" },
         h("span", { class: "pill", text: info.total_size ? fmtBytes(info.total_size) : "Unknown size" }),
         info.content_type ? h("span", { class: "pill", text: info.content_type }) : null,
-        info.resumable ? h("span", { class: "pill ok" }, icon("zap", 13), "Multi-connection · resumable")
-          : h("span", { class: "pill warn", text: "Single connection — the server doesn't allow splitting" })));
+        info.resumable ? h("span", { class: "pill ok" }, icon("zap", 12), "Multi-connection · resumable")
+          : h("span", { class: "pill warn", text: "Single connection — server doesn't allow splitting" })));
     setPrimary(() => startFile(url, name.value.trim() || info.filename));
   }
 
   async function analyzeMedia(url, my, inspectInfo = null) {
     preview.replaceChildren(h("div", { class: "loading" }, h("span", { class: "spinner" }), h("span", { text: "Finding video & audio formats…" })));
     let info = null;
-    try { info = (await api("/media/probe", { url })).result; } catch (e) { info = null; }
+    try { info = (await api("/media/probe", { url })).result; } catch { info = null; }
     if (my !== seq) return;
     const videos = info?.video_formats || [];
     const pl = info?.playlist;
@@ -453,9 +582,9 @@
     if (!found) {
       if (inspectInfo) {
         renderFile(url, inspectInfo);
-        preview.prepend(h("p", { class: "note", text: "This link is a web page and no video was found on it." }));
+        preview.prepend(h("p", { class: "note", text: "This link is a web page — no video was found on it." }));
       } else {
-        preview.replaceChildren(h("p", { class: "note", text: "No downloadable video was found. Private or login-only videos work through the browser extension, which uses your browser's login." }));
+        preview.replaceChildren(h("p", { class: "note", text: "No downloadable video found. Private or login-only videos work through the browser extension, which uses your browser's login." }));
       }
       return;
     }
@@ -515,7 +644,7 @@
         : { ...base, url, title: info.title };
       try {
         await api("/media/download", payload);
-        toast(whole && pl ? `${pl.entries.length} videos queued — 3 download at a time` : "Download started");
+        toast(whole && pl ? `${pl.entries.length} videos queued — 3 at a time` : "Download started");
         dialog.close();
         refresh();
       } catch (e) {
@@ -527,7 +656,7 @@
     preview.replaceChildren(
       h("div", { class: "media-head" },
         info.thumbnail ? h("img", { class: "thumb", src: info.thumbnail, alt: "", referrerpolicy: "no-referrer" })
-          : h("div", { class: "tile", "data-type": "video" }, icon("film", 18)),
+          : h("div", { class: "tile", "data-type": "video" }, icon("film", 17)),
         h("div", { style: "min-width:0" },
           h("div", { class: "media-title", text: info.title }),
           h("div", { class: "media-sub", text: [info.uploader, fmtDuration(info.duration), info.extractor].filter(Boolean).join(" · ") }))),
@@ -562,12 +691,12 @@
     $("out-connections").textContent = conns;
     const yt = s.media_support || {};
     $("set-ytdlp").textContent = yt.yt_dlp
-      ? `${yt.yt_dlp_version || "Installed"}${s.auto_update ? " · updates automatically every day" : " · automatic updates off"}`
+      ? `${yt.yt_dlp_version || "Installed"}${s.auto_update ? " · updates itself daily" : " · automatic updates off"}`
       : "Not installed — video and audio grabbing is unavailable";
     $("set-ffmpeg").textContent = yt.ffmpeg ? "Installed — merges HD video with audio and converts to MP3"
       : "Not found — some HD formats and MP3 conversion are unavailable";
-    $("about").textContent = `Veloce ${s.version} · MIT License · engine at ${location.host}`;
-    $("engine-text").textContent = `Running · v${s.version}`;
+    $("about").textContent = `Veloce ${s.version} · MIT License · ${location.host}`;
+    $("engine-text").textContent = `Engine running · v${s.version}`;
     $("welcome").hidden = s.autostart || store.get("welcomeDismissed", false);
   }
 
@@ -581,7 +710,7 @@
       toast(err.message, "error");
     }
   });
-  $("set-open-folder").addEventListener("click", () => api("/open-folder", {}));
+  $("set-open-folder").addEventListener("click", openFolder);
   $("set-connections").addEventListener("input", (e) => { $("out-connections").textContent = e.target.value; });
   $("set-connections").addEventListener("change", (e) => { store.set("connections", Number(e.target.value)); toast("Saved"); });
   $("set-update").addEventListener("click", async (e) => {
@@ -601,11 +730,22 @@
   $("welcome-enable").addEventListener("click", async () => {
     try {
       state.settings = await api("/settings", { autostart: true });
-      toast("Done — Veloce will start when you log in");
+      toast("Veloce will start when you log in");
     } catch (e) { toast(e.message, "error"); }
     $("welcome").hidden = true;
   });
   $("welcome-dismiss").addEventListener("click", () => { store.set("welcomeDismissed", true); $("welcome").hidden = true; });
+
+  // ---------------------------------------------------------------- theme (System / Light / Dark)
+  function setTheme(value) {
+    if (value === "light" || value === "dark") document.documentElement.dataset.theme = value;
+    else delete document.documentElement.dataset.theme;
+    store.set("veloce-theme-choice", value);
+    try { if (value === "system") localStorage.removeItem("veloce-theme"); else localStorage.setItem("veloce-theme", value); } catch { /* blocked */ }
+    document.querySelectorAll("#set-theme button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.themeValue === value)));
+  }
+  document.querySelectorAll("#set-theme button").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.themeValue)));
+  setTheme(store.get("veloce-theme-choice", "system"));
 
   // ---------------------------------------------------------------- boot
   loadSettings();
@@ -613,4 +753,5 @@
   setInterval(() => { if (!document.hidden) refresh(); }, 1000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
   if (location.hash === "#new") openAdd();
+  if (location.hash === "#search") setTimeout(openPalette, 50);
 })();

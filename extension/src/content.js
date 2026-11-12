@@ -121,8 +121,18 @@
     "facebook.com", "fb.watch", "vimeo.com", "dailymotion.com", "twitch.tv", "reddit.com", "bilibili.com",
     "streamable.com", "threads.net");
 
+  // The box people see as "the video". Players often keep the <video> element itself off-screen or
+  // under overlays until playback starts (YouTube shows a cover image), so prefer the player container.
+  const PLAYER_SELECTOR = "#movie_player, #shorts-player, .html5-video-player, .video-js, .jwplayer, .plyr, .vjs-tech, [data-testid='videoPlayer']";
+  function hitRect(video) {
+    const player = video.closest(PLAYER_SELECTOR);
+    const r = (player || video).getBoundingClientRect();
+    if (r.width >= 160 && r.height >= 120) return r;
+    return video.parentElement ? video.parentElement.getBoundingClientRect() : r;
+  }
+
   function isEligible(video) {
-    const r = video.getBoundingClientRect();
+    const r = hitRect(video);
     if (r.width < 160 || r.height < 120) return false;
     if (onSite("youtube.com")) {
       const p = location.pathname;
@@ -133,20 +143,27 @@
   }
 
   // ------------------------------------------------------------------ floating hover button
+  let themeChoice = "system";
+  const applyHostTheme = (el) => { if (themeChoice === "system") el.removeAttribute("data-theme"); else el.setAttribute("data-theme", themeChoice); };
+  try {
+    chrome.storage.local.get({ theme: "system" }, (r) => { themeChoice = r.theme; applyHostTheme(badgeHost); });
+    chrome.storage.onChanged.addListener((c) => { if (c.theme) { themeChoice = c.theme.newValue; applyHostTheme(badgeHost); if (modalHost) applyHostTheme(modalHost); } });
+  } catch { /* extension reloaded */ }
+
   const badgeHost = h("div", { class: "veloce-root veloce-badge-root" });
   const badgeShadow = badgeHost.attachShadow({ mode: "closed" });
   badgeShadow.append(h("style", { text: BADGE_CSS() }));
-  const badgeBtn = h("button", { class: "badge", type: "button", title: "Download with Veloce (Alt+Shift+V opens Veloce)" },
-    h("img", { src: ICON_URL, alt: "" }), h("span", { text: "Download" }));
+  const badgeBtn = h("button", { class: "badge", type: "button", title: "Download with Veloce", "aria-label": "Download this video with Veloce" },
+    icon("download", 14), h("span", { text: "Download" }));
   badgeShadow.append(badgeBtn);
   let badgeVideo = null;
   let hideTimer = 0;
 
   function placeBadge(video) {
-    const r = video.getBoundingClientRect();
+    const r = hitRect(video);
     const vertical = r.height > r.width * 1.1;
     badgeHost.style.top = `${Math.max(8, r.top + (vertical ? 14 : 12))}px`;
-    badgeHost.style.left = `${Math.min(window.innerWidth - 130, r.right - (vertical ? 118 : 124))}px`;
+    badgeHost.style.left = `${Math.min(window.innerWidth - 120, r.right - (vertical ? 108 : 112))}px`;
   }
 
   function showBadge(video) {
@@ -176,7 +193,8 @@
   // Live collection: the browser keeps it current, so there's no DOM query per mouse move.
   const videos = document.getElementsByTagName("video");
   let lastMove = 0;
-  document.addEventListener("mousemove", (e) => {
+  // Capture phase on window: players like YouTube's stop mousemove from bubbling to the document.
+  window.addEventListener("mousemove", (e) => {
     if (!videos.length) return; // the common case on most pages: zero work
     const now = performance.now();
     if (now - lastMove < 90) return;
@@ -184,12 +202,12 @@
     if (document.fullscreenElement) return;
     let hit = null;
     for (const v of videos) {
-      const r = v.getBoundingClientRect();
+      const r = hitRect(v);
       if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom && isEligible(v)) { hit = v; break; }
     }
     if (hit) showBadge(hit);
     else if (badgeVideo && !badgeHost.matches(":hover")) scheduleHide();
-  }, { passive: true });
+  }, { passive: true, capture: true });
 
   window.addEventListener("scroll", () => { if (badgeVideo) placeBadge(badgeVideo); }, { passive: true, capture: true });
 
@@ -230,6 +248,7 @@
   async function openPicker({ url, title, streams = [], directFile = null }) {
     closePicker();
     modalHost = h("div", { class: "veloce-root veloce-modal-root" });
+    applyHostTheme(modalHost);
     const root = modalHost.attachShadow({ mode: "closed" });
     root.append(h("style", { text: MODAL_CSS() }));
 
@@ -238,8 +257,8 @@
       h("header", {},
         h("img", { class: "logo", src: ICON_URL, alt: "" }),
         h("div", { class: "head-text" },
-          h("div", { class: "title", text: title }),
-          h("div", { class: "subtitle", text: hostLabel(url) })),
+          h("div", { class: "title", text: "Download" }),
+          h("div", { class: "subtitle", text: `from ${hostLabel(location.href) || hostLabel(url)}` })),
         h("button", { class: "icon-btn", type: "button", "aria-label": "Close", onclick: closePicker }, icon("x", 18))),
       body);
     const backdrop = h("div", { class: "backdrop", onclick: (e) => { if (e.target === backdrop) closePicker(); } }, dialog);
@@ -506,47 +525,54 @@
 
   // ------------------------------------------------------------------ styles (shadow DOM)
   function THEME_VARS() {
+    // Same palette as the popup and the app. Follows the OS unless the user chose a theme in Veloce settings.
     return `
       :host { all: initial; }
       * { box-sizing: border-box; }
-      .vars, :host {
-        --bg: #ffffff; --surface: #f8fafc; --surface-2: #f1f5f9; --border: #e2e8f0;
-        --text: #0f172a; --muted: #64748b; --accent: #2563eb; --accent-2: #38bdf8; --accent-ink: #ffffff;
-        --ok: #16a34a; --warn: #d97706; --shadow: 0 24px 60px -12px rgba(2, 6, 23, .35);
-        --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      :host {
+        --bg: #ffffff; --surface: #f5f7fb; --surface-2: #eef2f8; --border: #e3e8f1;
+        --text: #0b1530; --muted: #5f6b85; --accent: #2563eb; --accent-2: #38bdf8; --accent-ink: #ffffff;
+        --ok: #15803d; --warn: #b45309; --shadow: 0 24px 64px -16px rgba(11, 21, 48, .35), 0 0 0 1px rgba(11, 21, 48, .06);
+        --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-family: var(--font);
       }
       @media (prefers-color-scheme: dark) {
-        :host {
-          --bg: #0b1220; --surface: #111a2e; --surface-2: #17223a; --border: #22304d;
-          --text: #e2e8f0; --muted: #94a3b8; --accent: #3b82f6; --accent-2: #38bdf8;
-          --shadow: 0 24px 60px -12px rgba(0, 0, 0, .7);
+        :host(:not([data-theme="light"])) {
+          --bg: #111a2e; --surface: #0d1428; --surface-2: #17223a; --border: #1e2a44;
+          --text: #e8eefb; --muted: #8593ad; --accent: #4f8cff; --accent-2: #5cc8fa; --ok: #34c56b; --warn: #f0a63a;
+          --shadow: 0 24px 64px -16px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .06);
         }
+      }
+      :host([data-theme="dark"]) {
+          --bg: #111a2e; --surface: #0d1428; --surface-2: #17223a; --border: #1e2a44;
+          --text: #e8eefb; --muted: #8593ad; --accent: #4f8cff; --accent-2: #5cc8fa; --ok: #34c56b; --warn: #f0a63a;
+          --shadow: 0 24px 64px -16px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .06);
       }`;
   }
 
   function BADGE_CSS() {
     return `${THEME_VARS()}
+      /* Light touch over someone else's video: small, quiet until pointed at. */
       .badge {
-        display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 13px 0 9px;
-        border-radius: 999px; border: 1px solid rgba(255,255,255,.18); cursor: pointer;
-        background: rgba(15, 23, 42, .82); color: #fff; font: 600 12.5px/1 var(--font); letter-spacing: .01em;
-        backdrop-filter: blur(10px) saturate(1.4); -webkit-backdrop-filter: blur(10px) saturate(1.4);
-        box-shadow: 0 6px 20px rgba(0,0,0,.35); transition: transform .15s ease, background .15s ease;
+        display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px 0 9px;
+        border-radius: 999px; border: 1px solid rgba(255, 255, 255, .16); cursor: pointer;
+        background: rgba(11, 21, 48, .62); color: rgba(255, 255, 255, .94); font: 500 12px/1 var(--font);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .18); transition: background .15s ease, border-color .15s ease;
       }
-      .badge:hover { background: linear-gradient(135deg, #2563eb, #0ea5e9); transform: translateY(-1px); }
+      .badge:hover { background: #2563eb; border-color: transparent; color: #fff; }
+      .badge:active { background: #1d4ed8; }
       .badge:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
-      .badge img { width: 18px; height: 18px; border-radius: 5px; display: block; }`;
+      .badge svg { opacity: .9; }`;
   }
 
   function MODAL_CSS() {
     return `${THEME_VARS()}
       .backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px;
-        background: rgba(2, 6, 23, .55); backdrop-filter: blur(3px); animation: fade .15s ease-out; }
+        background: rgba(11, 21, 48, .45); animation: fade .15s ease-out; }
       .dialog { width: min(480px, 100%); max-height: min(640px, calc(100vh - 32px)); display: flex; flex-direction: column;
         background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 16px;
-        box-shadow: var(--shadow); overflow: hidden; animation: pop .18s cubic-bezier(.2,.9,.3,1.2); }
+        box-shadow: var(--shadow); overflow: hidden; animation: pop .18s cubic-bezier(.2,.8,.2,1); }
       header { display: flex; align-items: center; gap: 10px; padding: 14px 14px 12px 16px; border-bottom: 1px solid var(--border); }
       .logo { width: 28px; height: 28px; border-radius: 8px; flex: none; }
       .head-text { min-width: 0; flex: 1; }
@@ -576,7 +602,8 @@
       .btn { all: unset; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 9px;
         font: 650 12.5px/1 var(--font); cursor: pointer; white-space: nowrap; transition: filter .12s ease, background .12s ease; }
       .btn.small { height: 30px; padding: 0 11px; font-size: 12px; }
-      .btn.primary { background: linear-gradient(135deg, var(--accent), #0ea5e9); color: var(--accent-ink); }
+      .btn.primary { background: #2563eb; color: #fff; }
+      .btn.primary:hover { background: #1d4ed8; }
       .btn.primary:hover { filter: brightness(1.08); }
       .btn.ghost { background: var(--surface-2); color: var(--text); }
       .btn.ghost:hover { background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }

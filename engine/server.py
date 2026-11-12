@@ -50,6 +50,7 @@ UI_FILES = {
     "index.html": "text/html; charset=utf-8",
     "app.css": "text/css; charset=utf-8",
     "app.js": "text/javascript; charset=utf-8",
+    "theme.js": "text/javascript; charset=utf-8",
     "logo.png": "image/png",
 }
 

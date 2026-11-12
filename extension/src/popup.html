@@ -8,126 +8,105 @@
 </head>
 <body>
   <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <img src="../icons/icon48.png" alt="" class="brand-logo" width="30" height="30">
-        <div class="brand-text">
-          <span class="brand-name">Veloce</span>
-          <button class="status" id="engine-status" type="button" title="Engine status">
-            <span class="status-dot"></span><span class="status-label">Connecting…</span>
-          </button>
-        </div>
-      </div>
-      <div class="topbar-actions">
-        <button class="icon-btn" id="btn-open-folder" type="button" title="Open downloads folder" aria-label="Open downloads folder" data-icon="folder"></button>
+    <header class="top">
+      <button class="brand" id="btn-home" type="button" title="Veloce">
+        <img src="../icons/icon48.png" alt="" width="24" height="24">
+        <span class="brand-name">Veloce</span>
+      </button>
+      <span class="engine" id="engine" role="status"><span class="engine-dot"></span><span class="engine-label">Connecting</span></span>
+      <div class="top-actions">
+        <button class="icon-btn" id="btn-app" type="button" title="Open the Veloce app" aria-label="Open the Veloce app" data-icon="app-window"></button>
+        <button class="icon-btn" id="btn-settings" type="button" title="Settings" aria-label="Settings" data-icon="settings"></button>
       </div>
     </header>
 
-    <nav class="tabs" role="tablist" aria-label="Sections">
-      <button class="tab" role="tab" type="button" data-view="downloads" aria-selected="true">
-        <span data-icon="download"></span>Downloads<span class="count" id="count-active" hidden></span>
-      </button>
-      <button class="tab" role="tab" type="button" data-view="page" aria-selected="false">
-        <span data-icon="globe"></span>This page<span class="count" id="count-page" hidden></span>
-      </button>
-      <button class="tab" role="tab" type="button" data-view="settings" aria-selected="false">
-        <span data-icon="settings"></span>Settings
-      </button>
-    </nav>
-
-    <!-- ============================== DOWNLOADS ============================== -->
-    <main class="view" id="view-downloads">
-      <section class="offline-card" id="offline-card" hidden>
-        <div class="offline-icon" data-icon="power"></div>
-        <div class="offline-text">
-          <strong>Engine is off</strong>
-          <span>Files still download through Chrome. Start Veloce for multi-connection speed and video grabbing.</span>
-          <div class="offline-actions">
-            <button class="btn small ghost" id="btn-copy-start" type="button"><span data-icon="copy"></span>Copy start command</button>
-            <button class="btn small ghost" id="btn-retry-engine" type="button"><span data-icon="refresh"></span>Retry</button>
-          </div>
+    <!-- ============================ HOME ============================ -->
+    <main class="view" id="view-home">
+      <section class="offline" id="offline" hidden>
+        <div class="offline-head"><span data-icon="power"></span><strong>Veloce app isn't running</strong></div>
+        <p>Files still download through Chrome. Open the Veloce app for faster downloads and video grabbing.</p>
+        <div class="offline-actions">
+          <button class="btn small" id="btn-copy-start" type="button"><span data-icon="copy"></span>Copy start command</button>
+          <button class="btn small quiet" id="btn-retry-engine" type="button">Check again</button>
         </div>
       </section>
 
-      <form class="composer" id="composer" autocomplete="off">
-        <div class="field">
-          <span class="field-icon" data-icon="link"></span>
-          <input type="url" id="url-input" placeholder="Paste a link to download" spellcheck="false" aria-label="Download link">
-          <button class="icon-btn small" id="btn-paste" type="button" title="Paste from clipboard" aria-label="Paste from clipboard" data-icon="clipboard"></button>
-        </div>
-        <button class="btn primary" id="btn-add" type="submit"><span data-icon="download"></span>Get</button>
+      <!-- Contextual: the page you're on has media -->
+      <section class="here" id="here" hidden aria-live="polite"></section>
+
+      <form class="add" id="composer" autocomplete="off">
+        <span class="add-icon" data-icon="link"></span>
+        <input type="url" id="url-input" placeholder="Paste a link to download" spellcheck="false" aria-label="Download link">
+        <button class="icon-btn small" id="btn-paste" type="button" title="Paste" aria-label="Paste from clipboard" data-icon="clipboard"></button>
       </form>
 
       <section class="preview" id="preview" hidden aria-live="polite"></section>
 
       <div class="list-head">
-        <div class="filters" role="radiogroup" aria-label="Filter downloads">
-          <button class="filter" type="button" role="radio" data-filter="all" aria-checked="true">All</button>
-          <button class="filter" type="button" role="radio" data-filter="active" aria-checked="false">Active</button>
-          <button class="filter" type="button" role="radio" data-filter="done" aria-checked="false">Done</button>
-          <button class="filter" type="button" role="radio" data-filter="failed" aria-checked="false">Failed</button>
-        </div>
-        <button class="link-btn" id="btn-clear-done" type="button">Clear finished</button>
+        <span class="list-title">Downloads</span>
+        <span class="list-meta" id="list-meta"></span>
+        <button class="link" id="btn-clear-done" type="button">Clear finished</button>
+      </div>
+      <div class="tasks" id="tasks" role="list"></div>
+    </main>
+
+    <!-- ============================ SETTINGS ============================ -->
+    <main class="view" id="view-settings" hidden>
+      <div class="sub-head">
+        <button class="icon-btn" id="btn-back" type="button" aria-label="Back" data-icon="back"></button>
+        <span>Settings</span>
       </div>
 
-      <div class="tasks" id="tasks" role="list"></div>
+      <div class="group">
+        <div class="setting">
+          <span class="setting-text"><strong>Theme</strong><span>Starts by matching your system</span></span>
+          <div class="theme-seg" id="set-theme" role="radiogroup" aria-label="Theme">
+            <button type="button" role="radio" data-theme-value="system" aria-checked="true">System</button>
+            <button type="button" role="radio" data-theme-value="light" aria-checked="false">Light</button>
+            <button type="button" role="radio" data-theme-value="dark" aria-checked="false">Dark</button>
+          </div>
+        </div>
+      </div>
 
-    </main>
-
-    <!-- ============================== THIS PAGE ============================== -->
-    <main class="view" id="view-page" hidden>
-      <section class="page-card" id="page-card"></section>
-      <div class="list-head"><span class="section-label">Detected media streams</span></div>
-      <div class="tasks" id="streams" role="list"></div>
-    </main>
-
-    <!-- ============================== SETTINGS ============================== -->
-    <main class="view" id="view-settings" hidden>
-      <section class="settings-group">
-        <h2>Browser downloads</h2>
+      <div class="group">
         <label class="setting">
-          <span class="setting-text"><strong>Catch browser downloads</strong><span>Send downloads to Veloce when the engine is running</span></span>
+          <span class="setting-text"><strong>Catch browser downloads</strong><span>Hand downloads to Veloce while the app is running</span></span>
           <input type="checkbox" class="switch" id="set-intercept">
         </label>
         <label class="setting">
-          <span class="setting-text"><strong>Skip files smaller than</strong><span>Tiny files are faster in Chrome</span></span>
-          <span class="number"><input type="number" id="set-min-size" min="0" max="1000" step="1"> MB</span>
+          <span class="setting-text"><strong>Skip files smaller than</strong><span>Tiny files finish faster in Chrome</span></span>
+          <span class="number"><input type="number" id="set-min-size" min="0" max="1000" step="1"><span>MB</span></span>
         </label>
         <label class="setting column">
-          <span class="setting-text"><strong>Never catch downloads from</strong><span>One site per line, e.g. drive.google.com</span></span>
-          <textarea id="set-excluded" rows="3" spellcheck="false" placeholder="example.com"></textarea>
+          <span class="setting-text"><strong>Never catch downloads from</strong><span>One site per line</span></span>
+          <textarea id="set-excluded" rows="2" spellcheck="false" placeholder="drive.google.com"></textarea>
         </label>
-      </section>
+      </div>
 
-      <section class="settings-group">
-        <h2>Speed</h2>
+      <div class="group">
         <label class="setting column">
-          <span class="setting-text"><strong>Maximum connections per file</strong><span>Veloce starts small and adds connections only while they make it faster</span></span>
+          <span class="setting-text"><strong>Connections per file</strong><span>Veloce starts with one and adds more only while it gets faster</span></span>
           <span class="range"><input type="range" id="set-connections" min="1" max="32" step="1"><output id="out-connections">16</output></span>
         </label>
-      </section>
+      </div>
 
-      <section class="settings-group">
-        <h2>Privacy &amp; notifications</h2>
+      <div class="group">
         <label class="setting">
-          <span class="setting-text"><strong>Use my site logins</strong><span>Pass this browser's cookies to the local engine for login-only files and videos (never leaves your computer)</span></span>
+          <span class="setting-text"><strong>Use my site logins</strong><span>Lets login-only files and videos download. Cookies go only to the app on this computer.</span></span>
           <input type="checkbox" class="switch" id="set-cookies">
         </label>
         <label class="setting">
           <span class="setting-text"><strong>Notify when downloads finish</strong></span>
           <input type="checkbox" class="switch" id="set-notify">
         </label>
-      </section>
+      </div>
 
-      <section class="settings-group">
-        <h2>Engine</h2>
-        <dl class="engine-info" id="engine-info"></dl>
-        <p class="help">Start automatically at login: run <code>veloce autostart enable</code> once.</p>
-      </section>
+      <dl class="about" id="engine-info"></dl>
     </main>
-    <footer class="footer">
-      <span class="footer-speed"><span data-icon="zap"></span><span id="total-speed">0 B/s</span></span>
-      <span class="footer-hint" id="footer-hint">Alt+Shift+V opens Veloce</span>
+
+    <footer class="foot" id="foot">
+      <span class="foot-speed" id="foot-speed"></span>
+      <span class="foot-keys"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>V</kbd> opens Veloce</span>
     </footer>
   </div>
   <div class="toast" id="toast" role="status" hidden></div>
