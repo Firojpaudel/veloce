@@ -10,7 +10,7 @@ Set VELOCE_MIRROR to use a different mirror, or VELOCE_MIRROR=off to always use 
 """
 import os
 
-DEFAULT = "https://huggingface.co/datasets/Firojpaudel/veloce-downloads/resolve/main"
+DEFAULT = "https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main"
 
 
 def base() -> str:

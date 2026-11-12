@@ -19,7 +19,7 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-REPO_ID = os.environ.get("VELOCE_MIRROR_REPO", "Firojpaudel/veloce-downloads")
+REPO_ID = os.environ.get("VELOCE_MIRROR_REPO", "Firoj112/veloce-downloads")
 
 
 def fetch_verified(url, sha):
