@@ -74,6 +74,37 @@ def kind_of(name: str) -> str:
     return "video" if ext in VIDEO else "audio" if ext in AUDIO else "image" if ext in IMAGE else "file"
 
 
+ACTIVE_FOR = 600   # a device counts as connected while it was seen in the last 10 minutes
+PLAYING_FOR = 90   # and as watching/listening while it fetched part of a file in the last 90 s
+
+
+def describe_device(user_agent: str) -> dict:
+    """A readable name for a browser's device, e.g. {"name": "iPhone", "browser": "Safari", "kind": "phone"}."""
+    ua = user_agent or ""
+    if "iPhone" in ua or "iPod" in ua:
+        name, kind = "iPhone", "phone"
+    elif "iPad" in ua or ("Macintosh" in ua and "Mobile" in ua):
+        name, kind = "iPad", "tablet"
+    elif "Android" in ua:
+        name, kind = ("Android phone", "phone") if "Mobile" in ua else ("Android tablet", "tablet")
+    elif "CrOS" in ua:
+        name, kind = "Chromebook", "laptop"
+    elif "Windows" in ua:
+        name, kind = "Windows PC", "laptop"
+    elif "Macintosh" in ua or "Mac OS X" in ua:
+        name, kind = "Mac", "laptop"
+    elif "Linux" in ua:
+        name, kind = "Linux PC", "laptop"
+    elif any(t in ua for t in ("SMART-TV", "SmartTV", "Tizen", "Web0S", "BRAVIA")):
+        name, kind = "Smart TV", "tv"
+    else:
+        name, kind = "Device", "laptop"
+    browser = next((b for key, b in (("Edg/", "Edge"), ("OPR/", "Opera"), ("SamsungBrowser", "Samsung Internet"),
+                                     ("Firefox/", "Firefox"), ("FxiOS", "Firefox"), ("CriOS", "Chrome"),
+                                     ("Chrome/", "Chrome"), ("Safari/", "Safari")) if key in ua), "Browser")
+    return {"name": name, "browser": browser, "kind": kind}
+
+
 def srt_to_vtt(text: str) -> str:
     body = re.sub(r"(\d{2}:\d{2}:\d{2}),(\d{3})", r"\1.\2", text.replace("\r\n", "\n").lstrip("﻿"))
     return "WEBVTT\n\n" + body
@@ -85,9 +116,8 @@ class Share:
         self._lock = threading.Lock()
         self._server: Optional[ThreadingHTTPServer] = None
         self.code = ""
-        self.sessions: set = set()
-        self.fails: dict = {}    # ip -> (count, locked_until)
-        self.devices: dict = {}  # ip -> last seen
+        self.sessions: dict = {}  # token -> device info (see _session_info)
+        self.fails: dict = {}     # ip -> (count, locked_until)
 
     # ------------------------------------------------------------------ control
     def start(self) -> dict:
@@ -114,7 +144,7 @@ class Share:
 
     def _new_code(self):
         self.code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
-        self.sessions, self.fails, self.devices = set(), {}, {}
+        self.sessions, self.fails = {}, {}
 
     def new_code(self) -> dict:
         """Fresh code (e.g. it was seen by someone): every connected device has to enter the new one."""
@@ -126,7 +156,7 @@ class Share:
     def stop(self) -> dict:
         with self._lock:
             server, self._server = self._server, None
-            self.code, self.sessions, self.devices = "", set(), {}
+            self.code, self.sessions = "", {}
         if server:
             server.shutdown()
             server.server_close()
@@ -146,11 +176,37 @@ class Share:
             "link": f"http://{address}:{port}/?code={self.code}",
             "code": self.code,
             "folder": self.root,
-            "devices": sum(1 for seen in self.devices.values() if now - seen < 120),
+            "devices": self.devices(now),
         }
 
+    def devices(self, now: Optional[float] = None) -> list:
+        """Connected devices, most recently active first."""
+        now = now or time.time()
+        out = []
+        for info in list(self.sessions.values()):
+            if now - info["seen"] > ACTIVE_FOR:
+                continue
+            playing = info.get("playing")
+            out.append({
+                "id": info["id"], "name": info["name"], "browser": info["browser"], "kind": info["kind"],
+                "ip": info["ip"], "connected_at": info["connected"], "last_seen": info["seen"],
+                "bytes": info["bytes"],
+                "playing": {"name": playing["name"], "kind": playing["kind"]}
+                if playing and now - playing["at"] < PLAYING_FOR else None,
+            })
+        out.sort(key=lambda d: -d["last_seen"])
+        return out
+
+    def disconnect(self, device_id: str) -> dict:
+        """Signs one device out; it needs the code again to come back."""
+        with self._lock:
+            for token, info in list(self.sessions.items()):
+                if info["id"] == device_id:
+                    del self.sessions[token]
+        return self.status()
+
     # ------------------------------------------------------------------ access
-    def check_code(self, ip: str, code: str) -> Optional[str]:
+    def check_code(self, ip: str, code: str, user_agent: str = "") -> Optional[str]:
         """A new session token when the code is right; None otherwise (and counts the failure)."""
         now = time.time()
         count, until = self.fails.get(ip, (0, 0))
@@ -159,7 +215,8 @@ class Share:
         if self.code and secrets.compare_digest(code.strip().upper().encode(), self.code.encode()):
             self.fails.pop(ip, None)
             token = secrets.token_urlsafe(32)
-            self.sessions.add(token)
+            self.sessions[token] = {"id": secrets.token_hex(6), "ip": ip, "connected": now, "seen": now,
+                                    "bytes": 0, "playing": None, **describe_device(user_agent)}
             return token
         count += 1
         wait = LOCKOUTS[min(count - FREE_TRIES, len(LOCKOUTS)) - 1] if count > FREE_TRIES else 0
@@ -281,10 +338,10 @@ class _Handler(BaseHTTPRequestHandler):
     def _json(self, status: int, data):
         self._send(status, json.dumps(data).encode(), "application/json")
 
-    def _session(self) -> bool:
+    def _session(self) -> Optional[dict]:
         cookie = self.headers.get("Cookie") or ""
         m = re.search(r"(?:^|;\s*)veloce_share=([\w-]+)", cookie)
-        return bool(m and m.group(1) in self.share.sessions)
+        return self.share.sessions.get(m.group(1)) if m else None
 
     # ------------------------------------------------------------------ routes
     def do_POST(self):
@@ -306,7 +363,7 @@ class _Handler(BaseHTTPRequestHandler):
         if path in ("/", "/index.html"):
             code = (query.get("code") or [""])[0]
             if code:  # link with the code: start a session, then drop the code from the address bar
-                token = self.share.check_code(ip, code)
+                token = self.share.check_code(ip, code, self.headers.get("User-Agent", ""))
                 extra = {"Location": "/"}
                 if token:
                     extra["Set-Cookie"] = f"veloce_share={token}; HttpOnly; SameSite=Strict; Path=/"
@@ -320,7 +377,7 @@ class _Handler(BaseHTTPRequestHandler):
             wait = self.share.wait_left(ip)
             if wait:
                 return self._json(429, {"error": f"Too many wrong codes. Try again in {_duration(wait)}.", "wait": wait})
-            token = self.share.check_code(ip, (query.get("code") or [""])[0])
+            token = self.share.check_code(ip, (query.get("code") or [""])[0], self.headers.get("User-Agent", ""))
             if not token:
                 wait, left = self.share.wait_left(ip), self.share.tries_left(ip)
                 msg = (f"That code isn't right. Try again in {_duration(wait)}." if wait else
@@ -331,9 +388,10 @@ class _Handler(BaseHTTPRequestHandler):
             return self._send(200, body, "application/json",
                               {"Set-Cookie": f"veloce_share={token}; HttpOnly; SameSite=Strict; Path=/"})
 
-        if not self._session():
+        device = self._session()
+        if not device:
             return self._json(401, {"error": "Enter the access code shown in Veloce"})
-        self.share.devices[ip] = time.time()
+        device["seen"], device["ip"] = time.time(), ip
 
         if path == "/api/list":
             rel = (query.get("path") or [""])[0]
@@ -355,14 +413,15 @@ class _Handler(BaseHTTPRequestHandler):
             full = self.share.resolve(path[len("/f/"):])
             if not full or not os.path.isfile(full):
                 return self._json(404, {"error": "Not found"})
-            return self._file(full, download="download" in query)
+            device["playing"] = {"name": os.path.basename(full), "kind": kind_of(full), "at": time.time()}
+            return self._file(full, download="download" in query, device=device)
         self._json(404, {"error": "Not found"})
 
     def _static(self, name: str, ctype: str, extra: Optional[dict] = None):
         with open(os.path.join(UI_DIR, name), "rb") as f:
             self._send(200, f.read(), ctype, extra)
 
-    def _file(self, full: str, download: bool):
+    def _file(self, full: str, download: bool, device: Optional[dict] = None):
         size = os.path.getsize(full)
         ext = os.path.splitext(full)[1].lower()
         ctype = EXTRA_TYPES.get(ext) or mimetypes.guess_type(full)[0] or "application/octet-stream"
@@ -399,5 +458,8 @@ class _Handler(BaseHTTPRequestHandler):
                         break
                     self.wfile.write(chunk)
                     left -= len(chunk)
+                    if device is not None:
+                        device["bytes"] += len(chunk)
+                        device["playing"]["at"] = time.time()
         except (BrokenPipeError, ConnectionResetError):
             pass  # the player seeked or closed: normal while streaming

@@ -393,6 +393,23 @@ label.setting { cursor: pointer; }
 .share-code { font: 600 26px/1 var(--mono); letter-spacing: 0.3em; color: var(--text); padding: 4px 0; }
 .share-code-row { display: flex; align-items: center; gap: 12px; }
 .share-code-row .btn [data-icon] { display: grid; }
+.device-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.device { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--panel); }
+.device + .device { border-top: 1px solid var(--line); }
+.device-icon { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 8px; background: var(--bg-subtle); border: 1px solid var(--line); color: var(--text-2); }
+.device-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.device-text strong { font-weight: 500; }
+.device-text span { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.device-text .device-playing { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); }
+.device-playing svg { color: var(--green); flex: none; }
+.device-empty { padding: 12px; font-size: 12.5px; color: var(--text-3); background: var(--panel); }
+#btn-sharing { position: relative; }
+.count-badge {
+  position: absolute; top: 1px; right: 0; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px;
+  display: grid; place-items: center; background: var(--accent); color: #fff; font: 600 10px/1 var(--font);
+  font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--bg); animation: pop-in 0.18s ease-out;
+}
+@keyframes pop-in { from { transform: scale(0.6); opacity: 0; } }
 .share-foot { font-size: 12px; color: var(--text-3); }
 .sharing-on { color: var(--accent); }
 .sharing-on:hover { color: var(--accent); }

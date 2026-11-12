@@ -848,6 +848,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             try:
                 if payload.get("new_code"):
                     status = share().new_code()
+                elif payload.get("disconnect"):
+                    status = share().disconnect(str(payload["disconnect"]))
                 else:
                     status = share().start() if payload.get("enabled") else share().stop()
             except OSError as e:

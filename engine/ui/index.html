@@ -60,7 +60,7 @@
           <button class="btn small ghost" id="btn-clear" type="button" title="Remove finished items from the list — files stay on disk">Clear finished</button>
         </div>
         <div class="topbar-end">
-          <button class="icon-btn sharing-on" id="btn-sharing" type="button" title="Sharing your downloads on the home network — manage" aria-label="Sharing on home network" hidden><span data-icon="wifi"></span></button>
+          <button class="icon-btn sharing-on" id="btn-sharing" type="button" title="Sharing on your home network" aria-label="Sharing on home network" hidden><span data-icon="wifi"></span><span class="count-badge" id="share-count" hidden></span></button>
           <span class="theme-wrap">
             <button class="icon-btn" id="btn-theme" type="button" title="Switch theme" aria-label="Switch theme"></button>
             <span class="engine-pill" id="engine-pill" role="status" title="Veloce engine status"><span class="dot" id="engine-dot"></span><span class="sr-only" id="engine-text">Connecting</span></span>
@@ -165,7 +165,11 @@
                 <div class="share-code-row"><div class="share-code" id="share-code" aria-live="polite"></div>
                   <button class="btn small ghost" id="share-new-code" type="button" title="Make a new code and sign out every connected device"><span data-icon="refresh"></span>New code</button></div>
               </div>
-              <p class="share-foot"><span id="share-devices">No devices connected</span> · Wrong codes lock a device out for longer each time. Windows may ask to allow Veloce on private networks: allow it.</p>
+              <div class="share-step">
+                <span class="share-label" id="share-devices">Connected devices</span>
+                <div class="device-list" id="device-list" aria-live="polite"></div>
+              </div>
+              <p class="share-foot">Wrong codes lock a device out for longer each time. Windows may ask to allow Veloce on private networks: allow it.</p>
             </div>
           </div>
 

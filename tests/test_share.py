@@ -105,11 +105,26 @@ class ShareTests(unittest.TestCase):
         resp, _ = self.request("/api/list", cookie)
         self.assertEqual(resp.status, 401)
 
+    def test_devices_are_listed_and_can_be_disconnected(self):
+        self.share.start()
+        iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1"
+        resp, _ = self.request(f"/auth?code={self.share.code}", headers={"User-Agent": iphone})
+        cookie = resp.getheader("Set-Cookie").split(";")[0]
+        self.request("/f/Show/Ep%201.mp4", cookie, headers={"Range": "bytes=0-99"})
+        [device] = self.share.status()["devices"]
+        self.assertEqual((device["name"], device["browser"], device["kind"]), ("iPhone", "Safari", "phone"))
+        self.assertEqual(device["playing"]["name"], "Ep 1.mp4")
+        self.assertEqual(device["bytes"], 100)
+        self.share.disconnect(device["id"])
+        self.assertEqual(self.share.status()["devices"], [])
+        resp, _ = self.request("/api/list", cookie)
+        self.assertEqual(resp.status, 401)
+
     def test_stop_ends_sessions(self):
         self.share.start()
         self.login()
         self.share.stop()
-        self.assertEqual(self.share.sessions, set())
+        self.assertEqual(self.share.sessions, {})
         self.assertFalse(self.share.status()["enabled"])
 
 

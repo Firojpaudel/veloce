@@ -78,7 +78,7 @@ ShortDescription: Small, fast download manager with one-click video and audio do
 Description: |-
   Veloce speeds up downloads by adding connections only while they help, catches browser
   downloads, and grabs video or audio from YouTube, TikTok, Instagram and 1,800+ other sites.
-  It runs quietly in the system tray.
+  It runs quietly in the system tray and can stream your downloads to phones and laptops on your home network.
 Moniker: veloce
 Tags:
   - download-manager

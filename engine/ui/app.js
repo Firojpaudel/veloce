@@ -33,6 +33,10 @@
     arrow: ["M5 12h14", "M12 5l7 7-7 7"],
     sun: ["M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "M12 2v2", "M12 20v2", "M4.93 4.93l1.41 1.41", "M17.66 17.66l1.41 1.41", "M2 12h2", "M20 12h2", "M6.34 17.66l-1.41 1.41", "M19.07 4.93l-1.41 1.41"],
   moon: ["M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"],
+  phone: ["M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z", "M11 18h2"],
+  tablet: ["M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z", "M11 18h2"],
+  laptop: ["M4 5h16a1 1 0 0 1 1 1v10H3V6a1 1 0 0 1 1-1z", "M1 19h22"],
+  tv: ["M3 6h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z", "M8 2l4 4 4-4"],
   wifi: ["M5 12.55a11 11 0 0 1 14.08 0", "M1.42 9a16 16 0 0 1 21.16 0", "M8.53 16.11a6 6 0 0 1 6.95 0", "M12 20h.01"],
   sidebar: ["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M9 3v18"],
   power: ["M12 2v10", "M18.4 6.6a9 9 0 1 1-12.77.04"],
@@ -869,7 +873,37 @@
     $("share-url").textContent = s.url;
     $("share-code").textContent = s.code;
     $("share-copy").dataset.link = s.link;
-    $("share-devices").textContent = s.devices ? `${s.devices} device${s.devices === 1 ? "" : "s"} connected` : "No devices connected yet";
+    drawDevices(s.devices || []);
+  }
+
+  // Connected devices: listed in Settings, counted on the top-bar icon, announced when one joins
+  let knownDevices = null;
+  function ago(t) {
+    const s = Math.max(0, Date.now() / 1000 - t);
+    return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
+  }
+  function drawDevices(devices) {
+    const count = devices.length;
+    $("share-count").hidden = !count;
+    $("share-count").textContent = count > 9 ? "9+" : String(count);
+    $("btn-sharing").title = count ? `${count} device${count === 1 ? "" : "s"} connected — manage sharing` : "Sharing on your home network — no devices yet";
+    $("share-devices").textContent = count ? `Connected devices · ${count}` : "Connected devices";
+
+    const ids = new Set(devices.map((d) => d.id));
+    if (knownDevices) for (const d of devices) if (!knownDevices.has(d.id)) toast(`${d.name} connected`);
+    knownDevices = ids;
+
+    $("device-list").replaceChildren(...(count ? devices.map((d) => h("div", { class: "device" },
+      h("span", { class: "device-icon" }, icon(d.kind === "phone" ? "phone" : d.kind === "tablet" ? "tablet" : d.kind === "tv" ? "tv" : "laptop", 16)),
+      h("div", { class: "device-text" },
+        h("strong", { text: `${d.name} · ${d.browser}` }),
+        h("span", { text: [d.ip, `connected ${ago(d.connected_at)}`, d.bytes ? `${fmtBytes(d.bytes)} sent` : ""].filter(Boolean).join(" · ") }),
+        d.playing ? h("span", { class: "device-playing" }, icon(d.playing.kind === "audio" ? "music" : d.playing.kind === "video" ? "play" : "download", 12),
+          `${d.playing.kind === "audio" ? "Listening to" : d.playing.kind === "video" ? "Watching" : "Getting"} ${d.playing.name}`) : null),
+      h("button", { class: "btn small ghost", type: "button", title: "Sign this device out; it needs the code to come back",
+        onclick: async () => { try { drawShare(await api("/share", { disconnect: d.id })); toast(`${d.name} disconnected`); } catch (e) { toast(e.message, "error"); } } },
+      "Disconnect")))
+      : [h("p", { class: "device-empty", text: "No devices yet. Open the link above on a phone or laptop." })]));
   }
   async function refreshShare() {
     try { drawShare(await api("/share")); } catch { /* engine offline */ }
@@ -895,7 +929,8 @@
     catch (err) { toast(err.message, "error"); }
   });
   refreshShare();
-  setInterval(() => { if (!document.hidden) refreshShare(); }, 10000);
+  setInterval(() => { if (!document.hidden && !$("btn-sharing").hidden) refreshShare(); }, 4000);
+  setInterval(() => { if (!document.hidden && $("btn-sharing").hidden) refreshShare(); }, 15000);
 
   // ---------------------------------------------------------------- app updates
   async function refreshUpdate(force = false) {
