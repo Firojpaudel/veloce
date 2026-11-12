@@ -257,6 +257,9 @@ class Share:
 
     def listing(self, folder: str) -> list:
         entries = []
+        # Match self.root (a realpath): macOS /var -> /private/var and Windows 8.3 short names would
+        # otherwise make every relpath climb out of the root and hide all files.
+        folder = os.path.realpath(folder)
         try:
             names = os.listdir(folder)
         except OSError:
