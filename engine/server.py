@@ -282,6 +282,7 @@ class TaskStore:
                     sidecar_data: Optional[dict] = None) -> str:
         task_id = task_id or uuid.uuid4().hex[:8]
         output_path = output_path or DEFAULT_DOWNLOAD_DIR
+        out_dir = output_path if (os.path.isdir(output_path) or output_path.endswith(("/", "\\"))) else os.path.dirname(os.path.abspath(output_path))
         created_at = time.time()
 
         task = DownloadTask(
@@ -305,7 +306,7 @@ class TaskStore:
                     "kind": "file",
                     "url": url,
                     "created_at": created_at,
-                    "output_dir": output_path,
+                    "output_dir": out_dir,
                     "file_path": task.output_path,
                     **info,
                 }
@@ -321,7 +322,7 @@ class TaskStore:
                 "kind": "file",
                 "url": url,
                 "created_at": created_at,
-                "output_dir": output_path,
+                "output_dir": out_dir,
                 "status": "QUEUED",
                 "filename": sanitize_filename(filename or "") or os.path.basename(urlparse(url).path) or "Resolving…",
                 "percent": 0.0,
@@ -484,9 +485,9 @@ class TaskStore:
             self.tasks.pop(task_id, None)
             self.task_metadata.pop(task_id, None)
         out_dir = meta.get("output_dir") or DEFAULT_DOWNLOAD_DIR
-        if not _within(out_dir, DEFAULT_DOWNLOAD_DIR):
-            out_dir = DEFAULT_DOWNLOAD_DIR
         if meta.get("kind") == "media":
+            if not _within(out_dir, DEFAULT_DOWNLOAD_DIR):
+                out_dir = DEFAULT_DOWNLOAD_DIR
             self.create_media_task(
                 url=meta["url"], out_dir=out_dir, title=meta.get("title") or "media",
                 format_id=meta.get("format_id") or MediaEngine.normalize_format("720p", False),

@@ -857,6 +857,7 @@ class DownloadTask:
             self._running = False
             self.release_probe()
             # Deferred until the fd is closed: Windows cannot delete an open file.
+            # If cancel() ran before or after _run(), remove .part and .json now that _running is False.
             if self.status == "CANCELLED":
                 self._remove_partial()
 
@@ -997,9 +998,11 @@ class DownloadTask:
                 os.close(self._fd)
                 self._fd = None
             self.release_probe()
-            self._report_progress()
             if self.status in ("PAUSED", "ERROR"):
                 self._save_sidecar()
+            elif self.status == "CANCELLED":
+                self._remove_partial()
+            self._report_progress()
 
         if self.manager.is_all_completed() and self._downloaded() == self.total_size:
             os.replace(self.part_path, self.output_path)
@@ -1092,11 +1095,14 @@ class DownloadTask:
 
     def _remove_partial(self):
         self._delete_sidecar()
-        if os.path.isfile(self.part_path):
+        for _ in range(5):
+            if not os.path.isfile(self.part_path):
+                break
             try:
                 os.remove(self.part_path)
+                break
             except OSError:
-                pass
+                time.sleep(0.02)
 
     def _save_sidecar(self):
         """Atomically persists download progress to <final>.veloce.json."""

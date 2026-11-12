@@ -254,17 +254,22 @@ class TestEngineCorrectness(unittest.TestCase):
             self.assertTrue(store.remove_task(tid))
             self.assertTrue(os.path.exists(path), "Remove must never delete a finished download")
 
-            RangeServer.delay = 0.02
+            RangeServer.delay = 0.05
             tid = store.create_task(f"{url}/partial.bin", self.tmp, connections=2)
-            time.sleep(0.8)
-            path = store.task_metadata[tid]["file_path"]
             task = store.tasks[tid]
+            for _ in range(100):
+                if os.path.exists(task.part_path) and task._downloaded() > 0:
+                    break
+                time.sleep(0.02)
+            RangeServer.delay = 0.0
+            path = store.task_metadata[tid]["file_path"]
             store.remove_task(tid)
             for _ in range(100):
                 if not task._running:
                     break
-                time.sleep(0.1)
+                time.sleep(0.05)
             self.assertFalse(os.path.exists(path), "Cancelling should clean up the partial file")
+            self.assertFalse(os.path.exists(task.part_path), "Cancelling should clean up the .part file")
         finally:
             server.shutdown()
 

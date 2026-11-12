@@ -129,8 +129,8 @@ class Share:
             bind_addr = lan_address()
             last = None
             server = None
-            # Bind to detected LAN address first; fall back to 0.0.0.0 only if binding fails
-            if bind_addr and bind_addr != "0.0.0.0":
+            # Bind to detected LAN address first; fall back to 0.0.0.0 if binding fails or no LAN route exists
+            if bind_addr and bind_addr not in ("0.0.0.0", "127.0.0.1"):
                 for port in PORTS:
                     try:
                         server = ThreadingHTTPServer((bind_addr, port), handler)

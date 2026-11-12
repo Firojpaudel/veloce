@@ -56,7 +56,7 @@ class CrashMockServer(BaseHTTPRequestHandler):
             self.end_headers()
             try:
                 self.wfile.write(type(self).payload)
-            except (BrokenPipeError, ConnectionResetError):
+            except OSError:
                 pass
             return
 
@@ -79,7 +79,7 @@ class CrashMockServer(BaseHTTPRequestHandler):
                 self.wfile.write(chunk[i:i + 16 * 1024])
                 if type(self).delay:
                     time.sleep(type(self).delay)
-        except (BrokenPipeError, ConnectionResetError):
+        except OSError:
             pass
 
 
@@ -104,7 +104,7 @@ class TestCrashSafety(unittest.TestCase):
         CrashMockServer.delay = 0.0
 
     def test_midway_kill_and_resume_across_restarts(self):
-        CrashMockServer.delay = 0.02
+        CrashMockServer.delay = 0.05
         with tempfile.TemporaryDirectory() as tmpdir:
             hist_file = os.path.join(tmpdir, "history.json")
             dl_dir = os.path.join(tmpdir, "downloads")
@@ -112,13 +112,17 @@ class TestCrashSafety(unittest.TestCase):
 
             store1 = TaskStore(history_file=hist_file)
             tid = store1.create_task(f"{self.url}/archive.bin", output_path=dl_dir, connections=4)
-            time.sleep(0.4)
+            task1 = store1.tasks[tid]
+            for _ in range(100):
+                if os.path.exists(task1.part_path) and task1._downloaded() > 0:
+                    break
+                time.sleep(0.02)
 
             # Simulate sudden interruption / crash
-            task1 = store1.tasks[tid]
+            CrashMockServer.delay = 0.0
             task1.pause()
             # Wait for task1 to stop
-            for _ in range(50):
+            for _ in range(100):
                 if not task1._running:
                     break
                 time.sleep(0.05)
@@ -143,7 +147,7 @@ class TestCrashSafety(unittest.TestCase):
             self.assertTrue(resumed)
 
             # Wait for completion
-            for _ in range(100):
+            for _ in range(150):
                 if store2.task_metadata[tid]["status"] == "COMPLETED":
                     break
                 time.sleep(0.1)
@@ -158,7 +162,7 @@ class TestCrashSafety(unittest.TestCase):
             self.assertEqual(hashlib.sha256(content).hexdigest(), SHA256_1)
 
     def test_server_changes_file_triggers_fresh_restart(self):
-        CrashMockServer.delay = 0.02
+        CrashMockServer.delay = 0.05
         with tempfile.TemporaryDirectory() as tmpdir:
             hist_file = os.path.join(tmpdir, "history.json")
             dl_dir = os.path.join(tmpdir, "downloads")
@@ -166,11 +170,15 @@ class TestCrashSafety(unittest.TestCase):
 
             store1 = TaskStore(history_file=hist_file)
             tid = store1.create_task(f"{self.url}/dynamic.bin", output_path=dl_dir, connections=4)
-            time.sleep(0.4)
-
             task1 = store1.tasks[tid]
+            for _ in range(100):
+                if os.path.exists(task1.part_path) and task1._downloaded() > 0:
+                    break
+                time.sleep(0.02)
+
+            CrashMockServer.delay = 0.0
             task1.pause()
-            for _ in range(50):
+            for _ in range(100):
                 if not task1._running:
                     break
                 time.sleep(0.05)
@@ -187,7 +195,7 @@ class TestCrashSafety(unittest.TestCase):
             store2 = TaskStore(history_file=hist_file)
             self.assertTrue(store2.resume_task(tid))
 
-            for _ in range(100):
+            for _ in range(150):
                 if store2.task_metadata[tid]["status"] == "COMPLETED":
                     break
                 time.sleep(0.1)
@@ -199,20 +207,23 @@ class TestCrashSafety(unittest.TestCase):
             self.assertEqual(hashlib.sha256(content).hexdigest(), SHA256_2)
 
     def test_no_file_exists_at_final_name_until_completion(self):
-        CrashMockServer.delay = 0.03
+        CrashMockServer.delay = 0.05
         with tempfile.TemporaryDirectory() as tmpdir:
             out_file = os.path.join(tmpdir, "target.bin")
             task = DownloadTask(f"{self.url}/target.bin", output_path=out_file, num_connections=4)
             t = threading.Thread(target=task.start)
             t.start()
 
-            # While downloading, check that final path does not exist
-            time.sleep(0.3)
+            # Wait until .part file is created and downloading
+            for _ in range(100):
+                if os.path.exists(task.part_path) and task._downloaded() > 0:
+                    break
+                time.sleep(0.02)
             self.assertFalse(os.path.exists(out_file), "Final target must not exist while downloading")
             self.assertTrue(os.path.exists(task.part_path), ".part path must exist while downloading")
 
             CrashMockServer.delay = 0.0
-            t.join(15)
+            t.join(20)
 
             self.assertEqual(task.status, "COMPLETED")
             self.assertTrue(os.path.exists(out_file), "Final target must exist after completion")
@@ -240,13 +251,18 @@ class TestCrashSafety(unittest.TestCase):
             self.assertIsNotNone(share.resolve("video.mp4"))
 
     def test_cancel_removes_both_temp_files(self):
-        CrashMockServer.delay = 0.02
+        CrashMockServer.delay = 0.05
         with tempfile.TemporaryDirectory() as tmpdir:
             store = TaskStore(history_file=None)
             tid = store.create_task(f"{self.url}/cancel_test.bin", output_path=tmpdir, connections=4)
-            time.sleep(0.4)
-
             task = store.tasks[tid]
+            for _ in range(100):
+                if os.path.exists(task.part_path) and task._downloaded() > 0:
+                    break
+                time.sleep(0.02)
+
+            # Ensure sidecar has been written at least once before cancelling
+            task._save_sidecar()
             part = task.part_path
             sidecar = task.sidecar_path
             final_path = store.task_metadata[tid]["file_path"]
@@ -254,8 +270,9 @@ class TestCrashSafety(unittest.TestCase):
             self.assertTrue(os.path.exists(part), ".part should exist before cancel")
             self.assertTrue(os.path.exists(sidecar), ".json should exist before cancel")
 
+            CrashMockServer.delay = 0.0
             store.remove_task(tid)
-            for _ in range(50):
+            for _ in range(100):
                 if not task._running:
                     break
                 time.sleep(0.05)

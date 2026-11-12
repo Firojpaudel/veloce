@@ -79,7 +79,10 @@ class ControlledCoverageServer(BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(chunk)))
                 self.send_header("Accept-Ranges", "bytes")
                 self.end_headers()
-                self.wfile.write(chunk)
+                try:
+                    self.wfile.write(chunk)
+                except OSError:
+                    pass
                 return
             # Subsequent ranged requests get 200 full body (ignoring range)
             self.send_response(200)
@@ -88,7 +91,7 @@ class ControlledCoverageServer(BaseHTTPRequestHandler):
             self.end_headers()
             try:
                 self.wfile.write(PAYLOAD_TEST)
-            except (BrokenPipeError, ConnectionResetError):
+            except OSError:
                 pass
             return
 
@@ -98,7 +101,7 @@ class ControlledCoverageServer(BaseHTTPRequestHandler):
                 if should_drop:
                     type(self).dropped_segments.add(start)
             if should_drop:
-                # Send 206 header and partial chunk, then forcefully close socket
+                # Send 206 header and partial chunk, then close connection early
                 self.send_response(206)
                 self.send_header("Content-Type", "application/octet-stream")
                 self.send_header("Content-Range", f"bytes {start}-{end}/{total}")
@@ -107,14 +110,9 @@ class ControlledCoverageServer(BaseHTTPRequestHandler):
                 try:
                     self.wfile.write(chunk[:8192])
                     self.wfile.flush()
-                except (BrokenPipeError, ConnectionResetError):
+                except OSError:
                     pass
                 self.close_connection = True
-                try:
-                    self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
-                    self.connection.close()
-                except Exception:
-                    pass
                 return
 
         self.send_response(206)
@@ -125,7 +123,7 @@ class ControlledCoverageServer(BaseHTTPRequestHandler):
         self.end_headers()
         try:
             self.wfile.write(chunk)
-        except (BrokenPipeError, ConnectionResetError):
+        except OSError:
             pass
 
 

@@ -33,7 +33,8 @@ class ShareTests(unittest.TestCase):
         self.addCleanup(self.share.stop)
 
     def request(self, path, cookie=None, method="GET", headers=None):
-        host = self.share._server.server_address[0]
+        bind_host = self.share._server.server_address[0]
+        host = "127.0.0.1" if bind_host in ("0.0.0.0", "") else bind_host
         conn = http.client.HTTPConnection(host, self.share._server.server_address[1], timeout=5)
         h = {"Host": host}
         if cookie:
