@@ -171,6 +171,12 @@ async function refreshEngine() {
   el.querySelector(".engine-label").textContent = state.engine ? "Ready" : "Off";
   el.title = state.engine ? `Veloce ${state.engine.version} is running` : "The Veloce app isn't running — downloads go through Chrome";
   $("offline").hidden = !!state.engine;
+  const keys = document.querySelector(".foot-keys");
+  if (state.engine?.update_available && keys && !keys.dataset.update) {
+    keys.dataset.update = "1";
+    keys.replaceChildren(h("button", { class: "link", type: "button", text: `Update to ${state.engine.latest_version} →`,
+      onclick: () => chrome.tabs.create({ url: "http://127.0.0.1:9229/#settings" }) }));
+  }
   if (was !== undefined && !!was !== !!state.engine) renderHere();
 }
 
@@ -191,7 +197,7 @@ async function renderHere() {
   state.tab = tab;
   if (!tab || !isHttp(tab.url || "")) { card.hidden = true; return; }
   const [{ mediaSite }, streamsRes] = await Promise.all([msg("IS_MEDIA_SITE", { url: tab.url }), msg("GET_TAB_STREAMS", { tabId: tab.id })]);
-  const streams = streamsRes.ok ? streamsRes.streams : [];
+  const streams = (streamsRes.ok ? streamsRes.streams : []).filter((s) => s.type !== "Subtitle");
   if (!mediaSite && !streams.length) { card.hidden = true; return; }
   if (mediaSite && state.engine) msg("PREFETCH_MEDIA", { url: tab.url, pageUrl: tab.url }); // ready by the time it's clicked
 

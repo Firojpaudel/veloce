@@ -215,8 +215,8 @@ def check_and_update(timeout: float = 30) -> Optional[str]:
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    # Keep the new one plus one previous version to fall back on
-    for _, old in installed_updates()[2:]:
+    # Keep only the newest; the bundled yt-dlp is always there to fall back on
+    for _, old in installed_updates()[1:]:
         shutil.rmtree(old, ignore_errors=True)
     logger.info(f"Downloaded yt-dlp {latest}")
     return latest

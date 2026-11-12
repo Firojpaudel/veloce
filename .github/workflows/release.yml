@@ -49,7 +49,8 @@ jobs:
         run: |
           pyinstaller --onefile --name veloce \
             --add-data "engine/ui:engine/ui" \
-            --collect-data yt_dlp_ejs \
+            --add-data "extension:extension" \
+            --collect-data yt_dlp_ejs --collect-all curl_cffi \
             --hidden-import pystray._xorg --hidden-import pystray._darwin --hidden-import pystray._appindicator \
             --exclude-module tkinter \
             main.py
@@ -66,7 +67,8 @@ jobs:
           pyinstaller --onedir --windowed --name Veloce `
             --icon assets/veloce.ico `
             --add-data "engine/ui;engine/ui" `
-            --collect-data yt_dlp_ejs `
+            --add-data "extension;extension" `
+            --collect-data yt_dlp_ejs --collect-all curl_cffi `
             --hidden-import pystray._win32 `
             --exclude-module tkinter `
             main.py

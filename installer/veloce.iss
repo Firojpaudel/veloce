@@ -34,6 +34,10 @@ CloseApplications=force
 Name: "autostart"; Description: "Start Veloce when I sign in (recommended)"; GroupDescription: "Options:"
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Options:"; Flags: unchecked
 
+[InstallDelete]
+; Updates replace the program cleanly: no files from the previous version are left behind
+Type: filesandordirs; Name: "{app}\_internal"
+
 [Files]
 Source: "..\dist\Veloce\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
@@ -48,6 +52,8 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\Veloce.exe"; Description: "Open Veloce now"; Flags: nowait postinstall skipifsilent
+; In-app updates run the installer silently; start the new version afterwards
+Filename: "{app}\Veloce.exe"; Parameters: "app --background"; Flags: nowait; Check: WizardSilent
 
 [UninstallRun]
 Filename: "{cmd}"; Parameters: "/C taskkill /IM Veloce.exe /F"; Flags: runhidden; RunOnceId: "StopVeloce"

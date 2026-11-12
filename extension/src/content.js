@@ -243,9 +243,9 @@
 
     // blob:/MSE players: use what the network sniffer saw for this tab
     const { streams = [] } = await send({ type: "GET_TAB_STREAMS" });
-    const ranked = [...streams].sort((a, b) => rank(b) - rank(a));
+    const ranked = streams.filter((s) => s.type !== "Subtitle").sort((a, b) => rank(b) - rank(a));
     const best = ranked[0];
-    return openPicker({ url: best ? best.url : location.href, title, streams: ranked, referer: best?.referer });
+    return openPicker({ url: best ? best.url : location.href, title, streams: ranked, referer: best?.referer, subtitles: captionUrls(streams) });
   }
 
   function rank(s) {
@@ -266,7 +266,9 @@
     if (e.key === "Escape") { e.stopPropagation(); closePicker(); }
   }
 
-  async function openPicker({ url, title, streams = [], directFile = null, referer = null }) {
+  const captionUrls = (streams) => streams.filter((s) => s.type === "Subtitle").map((s) => s.url).slice(0, 8);
+
+  async function openPicker({ url, title, streams = [], directFile = null, referer = null, subtitles = [] }) {
     closePicker();
     modalHost = h("div", { class: "veloce-root veloce-modal-root" });
     applyHostTheme(modalHost);
@@ -297,14 +299,97 @@
       return;
     }
 
-    const probe = await send({ type: "PROBE_MEDIA", url, pageUrl: referer || location.href });
-    if (!modalHost) return; // closed while loading
+    const ctx = { url, title, streams, directFile, referer, subtitles };
+    const current = modalHost;
+    const probePromise = send({ type: "PROBE_MEDIA", url, pageUrl: referer || location.href });
+
+    // YouTube: the page already knows the qualities, so show them instantly while the full lookup
+    // (playlists, exact formats) finishes in the background.
+    let shownInstant = false;
+    let touched = false;
+    body.addEventListener("pointerdown", () => { touched = true; }, { once: true });
+    const instant = await youtubeInstant(url);
+    if (instant && modalHost === current) {
+      renderFormats(body, instant, ctx);
+      shownInstant = true;
+    }
+
+    const probe = await probePromise;
+    if (!modalHost || modalHost !== current) return; // closed while loading
     if (!probe.ok) {
-      body.replaceChildren(errorView(probe.error || "Couldn't read formats from this page."));
+      if (!shownInstant) body.replaceChildren(errorView(probe.error || "Couldn't read formats from this page."));
       return;
     }
-    renderFormats(body, probe.result, { url, title, streams, directFile, referer });
+    // Refresh with the full result unless the user already started choosing
+    if (!shownInstant || (!touched && probe.result?.playlist)) renderFormats(body, probe.result, ctx);
   }
+
+  // ------------------------------------------------------------------ instant YouTube data
+  function youtubeVideoId(u) {
+    try {
+      const x = new URL(u, location.href);
+      if (!/youtube\.com$|youtu\.be$/.test(x.hostname.replace(/^www\.|^m\./, ""))) return "";
+      if (x.hostname.endsWith("youtu.be")) return x.pathname.slice(1, 12);
+      const shorts = x.pathname.match(/^\/shorts\/([\w-]{11})/);
+      return shorts ? shorts[1] : x.searchParams.get("v") || "";
+    } catch { return ""; }
+  }
+
+  /** The current YouTube video's details from the page's own player (≈1 ms), in the engine's format. */
+  function youtubeInstant(url) {
+    const id = youtubeVideoId(url);
+    if (!id || IN_FRAME || !onSite("youtube.com")) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const reqId = Math.random().toString(36).slice(2);
+      const timer = setTimeout(() => { window.removeEventListener("message", onMsg); resolve(null); }, 300);
+      function onMsg(e) {
+        if (e.source !== window || !e.data || e.data.type !== "veloce:player" || e.data.id !== reqId) return;
+        clearTimeout(timer);
+        window.removeEventListener("message", onMsg);
+        const d = e.data.data;
+        // Only trust data for the exact video being downloaded, with real formats
+        if (!d || d.videoId !== id || d.isLive || !Array.isArray(d.formats) || !d.formats.length) return resolve(null);
+        const audio = d.formats.filter((f) => /^audio\//.test(f.mimeType)).sort((a, b) => b.bitrate - a.bitrate);
+        const bestAudio = audio[0]?.contentLength || 0;
+        const byHeight = new Map();
+        for (const f of d.formats) {
+          if (!/^video\//.test(f.mimeType) || !(f.height >= 144)) continue;
+          const prev = byHeight.get(f.height);
+          // prefer H.264 sizes (what Veloce downloads), else the largest
+          if (!prev || (/avc1/.test(f.mimeType) && !/avc1/.test(prev.mimeType))) byHeight.set(f.height, f);
+        }
+        const tag = (h) => (h >= 2160 ? "4K" : h >= 1440 ? "Quad HD" : h >= 1080 ? "Full HD" : h >= 720 ? "HD" : "SD");
+        const video_formats = [...byHeight.values()].sort((a, b) => b.height - a.height).map((f) => ({
+          format_id: `${f.height}p`, height: f.height, resolution: `${f.height}p`, tag: tag(f.height),
+          fps: f.fps, vcodec: (f.mimeType.match(/codecs="([^".]+)/) || [])[1] || "",
+          filesize: f.contentLength ? f.contentLength + bestAudio : 0,
+        }));
+        if (!video_formats.length) return resolve(null);
+        resolve({
+          title: d.title, duration: d.lengthSeconds, thumbnail: d.thumbnail, uploader: d.author, extractor: "Youtube",
+          video_formats, audio_formats: audio.slice(0, 1).map((f) => ({ abr: Math.round(f.bitrate / 1000), filesize: f.contentLength })),
+          playlist: null,
+        });
+      }
+      window.addEventListener("message", onMsg);
+      window.postMessage({ type: "veloce:get-player", id: reqId }, "*");
+    });
+  }
+
+  // ------------------------------------------------------------------ prefetch when a video page opens
+  // (not only on hover): YouTube, Shorts, TikTok and Instagram posts — including YouTube's in-page navigation.
+  const VIDEO_PAGE = /youtube\.com\/(watch|shorts\/)|youtu\.be\/|tiktok\.com\/@[^/]+\/video\/|instagram\.com\/(reel|reels|p)\//;
+  let lastPrefetchedPage = "";
+  function prefetchPage() {
+    if (IN_FRAME || location.href === lastPrefetchedPage || !VIDEO_PAGE.test(location.href)) return;
+    lastPrefetchedPage = location.href;
+    const url = location.href.split("&pp=")[0];
+    if (Date.now() - (prefetched.get(url) || 0) < 9 * 60 * 1000) return;
+    prefetched.set(url, Date.now());
+    send({ type: "PREFETCH_MEDIA", url, pageUrl: location.href });
+  }
+  setTimeout(prefetchPage, 800);
+  setInterval(prefetchPage, 1500);
 
   function hostLabel(url) {
     try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
@@ -356,7 +441,8 @@
       info.thumbnail ? h("img", { class: "thumb", src: info.thumbnail, alt: "", referrerpolicy: "no-referrer" }) : null,
       h("div", { class: "media-meta" },
         h("div", { class: "media-title", text: title }),
-        h("div", { class: "media-sub", text: [info.uploader, fmtDuration(info.duration), info.extractor].filter(Boolean).join(" · ") })));
+        h("div", { class: "media-sub", text: [info.uploader, fmtDuration(info.duration), info.extractor,
+          ctx.subtitles?.length ? `${ctx.subtitles.length} caption file${ctx.subtitles.length > 1 ? "s" : ""} included` : ""].filter(Boolean).join(" · ") })));
 
     const content = h("div", { class: "content" });
     const tabs = h("div", { class: "tabs", role: "tablist" });
@@ -377,7 +463,7 @@
     if (videos.length || ctx.directFile) addTab("video", "Video", "film", () => videoList(videos, ctx, singleTitle));
     if (videos.length || audios.length || ctx.directFile) addTab("audio", "Audio only", "music", () => audioList(audios, ctx, singleTitle));
     if (playlist && playlist.entries?.length) addTab("playlist", `Playlist · ${playlist.count}`, "list", () => playlistView(playlist, ctx));
-    if (ctx.streams?.length > 1) addTab("streams", "Detected streams", "signal", () => streamList(ctx.streams, title));
+    if (ctx.streams?.length > 1) addTab("streams", "Detected streams", "signal", () => streamList(ctx.streams, title, ctx.subtitles));
 
     body.replaceChildren(meta, tabs, content);
     if (!sections.length) {
@@ -410,7 +496,7 @@
   const mediaDownload = (ctx, title, extra) => send({
     type: "DOWNLOAD_MEDIA",
     payload: { url: ctx.url, page_url: location.href, title, headers: { Referer: location.href },
-      referers: [ctx.referer].filter(Boolean), ...extra },
+      referers: [ctx.referer].filter(Boolean), subtitle_urls: ctx.subtitles || [], ...extra },
   });
 
   function videoList(videos, ctx, title) {
@@ -521,7 +607,7 @@
       h("div", { class: "footer" }, h("span", { class: "hint", text: `Saved in “${pl.title}” inside your Veloce folder` }), startBtn));
   }
 
-  function streamList(streams, title) {
+  function streamList(streams, title, subtitles = []) {
     const list = h("div", { class: "list" });
     for (const s of streams) {
       let name = s.url;
@@ -532,7 +618,7 @@
         action: () => (s.type === "File"
           ? send({ type: "DOWNLOAD_FILE", url: s.url, referrer: s.referer || location.href })
           : send({ type: "DOWNLOAD_MEDIA", payload: { url: s.url, page_url: location.href, title, format_id: "best",
-            headers: { Referer: location.href }, referers: [s.referer].filter(Boolean) } })),
+            headers: { Referer: location.href }, referers: [s.referer].filter(Boolean), subtitle_urls: subtitles } })),
       }));
     }
     return list;
@@ -545,8 +631,9 @@
       if (msg.url) { openPicker({ url: msg.url, title, directFile: msg.url, referer: msg.frameUrl }); return; }
       // blob: player inside the frame — use the streams the network sniffer saw for this tab
       send({ type: "GET_TAB_STREAMS" }).then(({ streams = [] }) => {
-        const ranked = [...streams].sort((a, b) => rank(b) - rank(a));
-        openPicker({ url: ranked[0]?.url || msg.frameUrl, title, streams: ranked, referer: ranked[0]?.referer || msg.frameUrl });
+        const ranked = streams.filter((s) => s.type !== "Subtitle").sort((a, b) => rank(b) - rank(a));
+        openPicker({ url: ranked[0]?.url || msg.frameUrl, title, streams: ranked, referer: ranked[0]?.referer || msg.frameUrl,
+          subtitles: captionUrls(streams) });
       });
       return;
     }

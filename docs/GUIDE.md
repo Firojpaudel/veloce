@@ -72,16 +72,28 @@ The Veloce window opens in your browser at `http://127.0.0.1:9229`, and a Veloce
 
 The extension adds the **Download** button to videos and hands browser downloads to the app. It works in Chrome, Edge, Brave, Opera, Vivaldi and other Chromium browsers.
 
-1. Download [`veloce-extension.zip`](https://huggingface.co/datasets/Firoj112/veloce-downloads/resolve/main/latest/veloce-extension.zip) and unzip it somewhere permanent (for example `Documents/veloce-extension`). Don't delete the folder afterwards — the browser loads it from there.
-2. Open `chrome://extensions` (Edge: `edge://extensions`).
-3. Switch on **Developer mode** (top-right).
-4. Click **Load unpacked** and choose the unzipped folder.
-5. Click the puzzle-piece icon in the toolbar and **pin** Veloce.
+The app keeps an up-to-date copy of the extension in its own folder, so you load it **once** and never reinstall it:
+
+| Your computer | Extension folder |
+| :--- | :--- |
+| Windows | `C:\Users\<you>\.veloce\extension` |
+| macOS / Linux | `~/.veloce/extension` |
+
+(The exact path is also in the Veloce app → **Settings → Extension folder**, with a **Copy path** button.)
+
+1. Open Veloce once, so it creates that folder.
+2. Open `chrome://extensions` (Edge: `edge://extensions`) and switch on **Developer mode** (top-right).
+3. Click **Load unpacked** and choose the extension folder above.
+4. Click the puzzle-piece icon in the toolbar and **pin** Veloce.
 
 Check it worked: click the Veloce icon. The badge next to the name should say **Ready**. If it says **Off**, the app isn't running — open it (step 1).
 
 > [!TIP]
 > <kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>V</kbd> opens the Veloce popup from anywhere in the browser.
+
+### Updates
+
+Veloce checks for a new version a few times a day. When one is out, the app shows **Update** (and the popup shows **Update to …**). One click downloads it from the fast mirror, verifies it against the release's SHA-256 checksums, installs it and restarts — the old version's files are removed, nothing piles up. The extension then reloads itself with the matching version.
 
 ---
 

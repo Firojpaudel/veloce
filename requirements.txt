@@ -1,6 +1,6 @@
 # The download engine itself uses only the Python standard library.
 # These are optional extras, bundled into the release binaries:
 
-yt-dlp[default]>=2026.8.19   # video & audio from 1,800+ sites, incl. its YouTube challenge solver (auto-updates at runtime)
+yt-dlp[default,curl-cffi]>=2026.8.19   # video & audio from 1,800+ sites; curl-cffi lets it look like a real browser to sites that require that
 pystray>=0.19       # system-tray icon for the desktop app
 Pillow>=10          # tray icon image (required by pystray)

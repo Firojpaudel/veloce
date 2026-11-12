@@ -62,6 +62,15 @@
         </div>
       </header>
 
+      <section class="welcome" id="update-banner" hidden>
+        <div class="welcome-icon"><img src="/ui/logo.png" alt="" width="28" height="28"></div>
+        <div class="welcome-text">
+          <strong id="update-title">A new version of Veloce is ready</strong>
+          <span>Updates in about a minute: verified download, then Veloce restarts. The extension updates itself too.</span>
+        </div>
+        <button class="btn primary small" id="update-now" type="button">Update</button>
+      </section>
+
       <section class="welcome" id="welcome" hidden>
         <div class="welcome-icon"><img src="/ui/logo.png" alt="" width="28" height="28"></div>
         <div class="welcome-text">
@@ -87,6 +96,17 @@
                 <button type="button" role="radio" data-theme-value="light" aria-checked="false">Light</button>
                 <button type="button" role="radio" data-theme-value="dark" aria-checked="false">Dark</button>
               </div>
+            </div>
+          </div>
+          <div class="group">
+            <h2>Updates</h2>
+            <div class="setting">
+              <span class="setting-text"><strong id="set-version">Veloce</strong><span id="set-update-text">Checking for updates…</span></span>
+              <button class="btn small" id="set-update-app" type="button">Check now</button>
+            </div>
+            <div class="setting">
+              <span class="setting-text"><strong>Extension folder</strong><span>Load this folder in <code>chrome://extensions</code> once — Veloce keeps it updated: <span id="set-ext-dir" class="mono"></span></span></span>
+              <button class="btn small" id="set-copy-ext" type="button">Copy path</button>
             </div>
           </div>
           <div class="group">

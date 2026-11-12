@@ -61,6 +61,47 @@ class MediaCancelled(Exception):
 PLAYLIST_ENTRY_LIMIT = 500
 
 
+def attach_subtitles(video_path: str, urls: List[str], headers: Dict[str, str]):
+    """
+    Captions the page's player loaded as separate files (.vtt/.srt/.ass): saves each as .srt next to the
+    video (VLC, MPV and Windows' player pick these up automatically) and embeds them in the MP4.
+    """
+    import urllib.request
+    if not MediaEngine._locate_ffmpeg():
+        return
+    root, ext = os.path.splitext(video_path)
+    tmp = tempfile.mkdtemp(prefix="veloce-subs-")
+    try:
+        srts = []
+        for i, url in enumerate(urls[:8]):
+            if not str(url).startswith(("http://", "https://")):
+                continue
+            raw = os.path.join(tmp, f"sub{i}")
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", **headers})
+            with urllib.request.urlopen(req, timeout=30) as r, open(raw, "wb") as f:
+                f.write(r.read(5 * 1024 * 1024))  # caption files are small; cap just in case
+            out = f"{root}.{i + 1}.srt" if len(urls) > 1 else f"{root}.srt"
+            res = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", raw, out], capture_output=True)
+            if res.returncode == 0 and os.path.getsize(out) > 0:
+                srts.append(out)
+        if not srts or ext.lower() not in (".mp4", ".m4v", ".mkv"):
+            return
+        embedded = os.path.join(tmp, "with-subs" + ext)
+        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", video_path]
+        for srt in srts:
+            cmd += ["-i", srt]
+        cmd += ["-map", "0"] + sum((["-map", str(i + 1)] for i in range(len(srts))), [])
+        cmd += ["-c", "copy", "-c:s", "mov_text" if ext.lower() in (".mp4", ".m4v") else "srt", embedded]
+        if subprocess.run(cmd, capture_output=True).returncode == 0:
+            os.replace(embedded, video_path)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _veloce_home() -> str:
+    return os.path.abspath(os.path.expanduser(os.environ.get("VELOCE_HOME", os.path.join("~", ".veloce"))))
+
+
 class _YdlLog:
     """Routes yt-dlp's own messages into engine.log, so failures on any machine can be diagnosed."""
     _log = logging.getLogger("yt-dlp")
@@ -463,6 +504,7 @@ class MediaEngine:
         should_stop: Optional[Callable[[], bool]] = None,
         cookies: Optional[List[dict]] = None,
         referers: Optional[List[str]] = None,
+        subtitle_urls: Optional[List[str]] = None,
     ) -> str:
         """
         Downloads a media stream with yt-dlp (16 concurrent fragments for HLS/DASH),
@@ -470,9 +512,15 @@ class MediaEngine:
         Returns the final file path. Raises on failure or MediaCancelled when stopped.
         """
         with cookie_file(cookies) as cookiefile:
-            return MediaEngine._download_impl(url, output_dir, filename_prefix, format_id, extract_audio,
+            path = MediaEngine._download_impl(url, output_dir, filename_prefix, format_id, extract_audio,
                                               audio_format, headers, progress_callback, should_stop, cookiefile,
                                               referers or [])
+        if subtitle_urls and not extract_audio:
+            try:
+                attach_subtitles(path, subtitle_urls, MediaEngine._filter_headers(headers))
+            except Exception as e:  # captions are a bonus; never fail the video over them
+                logger.warning(f"Couldn't attach captions: {e}")
+        return path
 
     @staticmethod
     def _download_impl(url, output_dir, filename_prefix, format_id, extract_audio, audio_format,
@@ -483,6 +531,21 @@ class MediaEngine:
         http_headers = MediaEngine._filter_headers(headers)
         preferred_ext = audio_format if (extract_audio and has_ffmpeg) else ("mp4" if has_ffmpeg else None)
 
+        # Fragment downloads write hundreds of "*.part-FragN" files; keep them in a private temp folder
+        # (deleted afterwards, even on failure) instead of the user's downloads folder.
+        work_dir = os.path.join(_veloce_home(), "tmp", f"{os.getpid()}-{abs(hash((url, filename_prefix))) % 10**8}")
+        os.makedirs(work_dir, exist_ok=True)
+        try:
+            return MediaEngine._run_download(url, output_dir, filename_prefix, format_id, extract_audio, audio_format,
+                                             headers, progress_callback, should_stop, cookiefile, referers,
+                                             out_template, has_ffmpeg, http_headers, preferred_ext, work_dir)
+        finally:
+            shutil.rmtree(work_dir, ignore_errors=True)
+
+    @staticmethod
+    def _run_download(url, output_dir, filename_prefix, format_id, extract_audio, audio_format, headers,
+                      progress_callback, should_stop, cookiefile, referers, out_template, has_ffmpeg,
+                      http_headers, preferred_ext, work_dir) -> str:
         yt_dlp = ytdlp()
         if yt_dlp is not None:
             def hook(d):
@@ -498,7 +561,8 @@ class MediaEngine:
                     })
 
             base_opts = {
-                "outtmpl": out_template,
+                "outtmpl": f"{filename_prefix}.%(ext)s",
+                "paths": {"home": output_dir, "temp": work_dir},
                 "noplaylist": True,
                 "concurrent_fragment_downloads": 16,
                 "buffersize": 1024 * 1024,
@@ -529,11 +593,25 @@ class MediaEngine:
                 # Same resolution, but prefer H.264 + AAC: MP4s that play everywhere (Windows' player, iPhone,
                 # QuickTime), not AV1/Opus that only browsers and VLC handle.
                 primary["format_sort"] = ["res", "vcodec:h264", "acodec:aac"]
+                # Captions: saved as .srt next to the video (players pick these up) and embedded in the MP4.
+                primary.update({
+                    "writesubtitles": True,
+                    "subtitleslangs": ["all", "-live_chat"],
+                    "subtitlesformat": "srt/vtt/ass/best",
+                })
+                primary["postprocessors"] = [
+                    {"key": "FFmpegSubtitlesConvertor", "format": "srt"},
+                    {"key": "FFmpegEmbedSubtitle", "already_have_subtitle": True},
+                ]
             else:
                 primary["format"] = "best[ext=mp4]/best"
 
             basic = "bestaudio/best" if extract_audio else ("bv*+ba/b" if has_ffmpeg else "best[ext=mp4]/best")
             attempts = [primary]
+            if primary.get("writesubtitles"):
+                # A broken caption file must never cost the video: same download, without captions
+                attempts.append({k: v for k, v in primary.items()
+                                 if k not in ("writesubtitles", "subtitleslangs", "subtitlesformat", "postprocessors")})
             if cookiefile:
                 # Signed-in sessions make YouTube use stricter clients; the same video often works without them.
                 attempts.append({k: v for k, v in primary.items() if k != "cookiefile"})

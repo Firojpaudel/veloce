@@ -3,7 +3,7 @@
   "manifest_version": 3,
   "name": "Veloce Download Accelerator",
   "short_name": "Veloce",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Faster downloads with adaptive multi-connection transfers, plus one-click video and audio grabbing from YouTube, TikTok, Instagram and more.",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -21,8 +21,13 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["icons/icon32.png", "icons/icon48.png"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "icons/icon32.png",
+        "icons/icon48.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "background": {
@@ -30,10 +35,28 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["src/content.js"],
-      "css": ["src/content.css"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "src/content.js"
+      ],
+      "css": [
+        "src/content.css"
+      ],
       "all_frames": true,
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*"
+      ],
+      "js": [
+        "src/youtube-main.js"
+      ],
+      "world": "MAIN",
       "run_at": "document_idle"
     }
   ],
@@ -49,7 +72,9 @@
   },
   "commands": {
     "_execute_action": {
-      "suggested_key": { "default": "Alt+Shift+V" },
+      "suggested_key": {
+        "default": "Alt+Shift+V"
+      },
       "description": "Open Veloce"
     }
   },

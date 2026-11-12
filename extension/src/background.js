@@ -64,10 +64,31 @@ async function api(path, { method = "GET", body, timeout = 5000 } = {}) {
 
 async function engineStatus(timeout = 900) {
   try {
-    return await api("/status", { timeout });
+    const status = await api("/status", { timeout });
+    maybeSelfUpdate(status);
+    return status;
   } catch {
     return null;
   }
+}
+
+/**
+ * The app keeps a copy of the matching extension in its folder (~/.veloce/extension). When Chrome
+ * loaded the extension from there and the app has a newer copy, reload once to pick it up — no
+ * removing or re-adding the extension by hand.
+ */
+function newer(a, b) {
+  const pa = String(a || "").split(".").map(Number), pb = String(b || "").split(".").map(Number);
+  for (let i = 0; i < 3; i++) { if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0); }
+  return false;
+}
+async function maybeSelfUpdate(status) {
+  const available = status?.extension_version;
+  if (!available || !newer(available, chrome.runtime.getManifest().version)) return;
+  const { reloadedFor } = await chrome.storage.local.get("reloadedFor");
+  if (reloadedFor === available) return; // loaded from a folder the app doesn't manage: don't loop
+  await chrome.storage.local.set({ reloadedFor: available });
+  chrome.runtime.reload();
 }
 
 /** Cookies for a URL's site (incl. subdomains) in chrome.cookies shape, for yt-dlp's cookies.txt. */
@@ -235,6 +256,18 @@ chrome.webRequest.onHeadersReceived.addListener(
     const contentType = header("content-type").toLowerCase();
     const size = parseInt(header("content-length"), 10) || 0;
 
+    // Caption files players load next to the video (HLS caption *segments* are left to the manifest)
+    const isSub = (/\.(vtt|srt|ass|ssa)(\?|$)/.test(lower) || /text\/vtt|x-subrip|x-ssa|text\/x-ass/.test(contentType)) &&
+      !/[/_-](seg|segment|chunk|frag)[-_]?\d+/.test(lower);
+    if (isSub) {
+      loadTabStreams(details.tabId).then((map) => {
+        if (map.has(url)) return;
+        map.set(url, { url, type: "Subtitle", contentType, size: 0, timestamp: Date.now(),
+          referer: details.initiator && details.initiator !== "null" ? `${details.initiator}/` : "" });
+        persistTabStreams(details.tabId);
+      });
+      return;
+    }
     const isHls = /\.m3u8(\?|$)/.test(lower) || contentType.includes("mpegurl");
     const isDash = /\.mpd(\?|$)/.test(lower) || contentType.includes("dash+xml");
     const isDirect = !isHls && !isDash &&

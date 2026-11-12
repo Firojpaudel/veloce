@@ -111,6 +111,7 @@ def _run_one(job: dict, emit) -> object:
             headers=job.get("headers"),
             cookies=job.get("cookies"),
             referers=job.get("referers"),
+            subtitle_urls=job.get("subtitle_urls"),
             progress_callback=lambda p: emit({"event": "progress", **p}),
         )
     raise ValueError(f"unknown op {op!r}")

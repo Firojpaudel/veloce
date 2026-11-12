@@ -762,11 +762,46 @@
   document.querySelectorAll("#set-theme button").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.themeValue)));
   setTheme(store.get("veloce-theme-choice", "system"));
 
+  // ---------------------------------------------------------------- app updates
+  async function refreshUpdate(force = false) {
+    let u;
+    try { u = force ? await api("/update/check", {}) : await api("/status"); } catch { return; }
+    const available = force ? u.available : u.update_available;
+    const latest = force ? u.latest : u.latest_version;
+    const busy = force ? u.installing : u.updating;
+    $("update-banner").hidden = !available;
+    $("update-title").textContent = busy ? `Updating to Veloce ${latest}…` : `Veloce ${latest} is ready`;
+    $("update-now").disabled = !!busy;
+    $("set-version").textContent = `Veloce ${state.settings?.version || ""}`;
+    $("set-update-text").textContent = busy ? `Updating to ${latest}…` : available ? `Version ${latest} is available` : "You're on the latest version";
+    $("set-update-app").textContent = available ? "Update" : "Check now";
+    if (u.extension_dir) $("set-ext-dir").textContent = u.extension_dir;
+  }
+  async function startUpdate() {
+    $("update-now").disabled = true;
+    try {
+      const r = await api("/update/install", {});
+      toast(r.message);
+    } catch (e) { toast(e.message, "error"); $("update-now").disabled = false; }
+  }
+  $("update-now").addEventListener("click", startUpdate);
+  $("set-update-app").addEventListener("click", async () => {
+    if ($("set-update-app").textContent === "Update") return startUpdate();
+    await refreshUpdate(true);
+    toast($("set-update-text").textContent);
+  });
+  $("set-copy-ext").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText($("set-ext-dir").textContent); toast("Folder path copied"); } catch { toast("Couldn't copy", "error"); }
+  });
+  refreshUpdate();
+  setInterval(() => { if (!document.hidden) refreshUpdate(); }, 60000);
+
   // ---------------------------------------------------------------- boot
   loadSettings();
   refresh();
   setInterval(() => { if (!document.hidden) refresh(); }, 1000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
   if (location.hash === "#new") openAdd();
+  if (location.hash === "#settings") go("settings");
   if (location.hash === "#search") setTimeout(openPalette, 50);
 })();

@@ -55,6 +55,14 @@ UI_FILES = {
 }
 
 
+def _update_summary() -> dict:
+    """Cheap (no network): what the extension and app window need to offer an update."""
+    from . import app_update
+    u = app_update.check(fetch=False)
+    return {"update_available": u["available"], "latest_version": u["latest"], "updating": u["installing"],
+            **app_update.status()}
+
+
 def settings_payload() -> dict:
     from . import autostart, updater, jsruntime
     try:
@@ -68,6 +76,7 @@ def settings_payload() -> dict:
         "auto_update": updater.enabled(),
         "media_support": MediaEngine.available(),
         "max_connections": MAX_CONNECTIONS,
+        **_update_summary(),
         **jsruntime.status(),
     }
 
@@ -296,7 +305,7 @@ class TaskStore:
                           extract_audio: bool, audio_format: str, headers: dict,
                           page_url: Optional[str] = None, task_id: Optional[str] = None,
                           cookies: Optional[list] = None, playlist: Optional[str] = None,
-                          referers: Optional[list] = None) -> str:
+                          referers: Optional[list] = None, subtitle_urls: Optional[list] = None) -> str:
         task_id = task_id or uuid.uuid4().hex[:8]
         stop = threading.Event()
         with self.lock:
@@ -361,6 +370,7 @@ class TaskStore:
                         "op": "download", "url": url, "output_dir": out_dir, "filename_prefix": title,
                         "format_id": format_id, "extract_audio": extract_audio, "audio_format": audio_format,
                         "headers": headers, "cookies": cookies, "referers": referers or [],
+                        "subtitle_urls": subtitle_urls or [],
                     }, on_progress=on_progress, stop=stop)
                 size = os.path.getsize(final_path) if os.path.exists(final_path) else 0
                 update = {"status": "COMPLETED", "percent": 100.0, "speed": 0.0, "eta": 0,
@@ -635,6 +645,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 "version": __version__,
                 "default_download_dir": DEFAULT_DOWNLOAD_DIR,
                 "media_support": MediaEngine.available(),
+                **_update_summary(),
             })
         elif path == "/api/tasks":
             self._send_json(200, {"tasks": STORE.list_tasks()})
@@ -691,7 +702,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         if path == "/api/media/prefetch":
             # Fire-and-forget: start the lookup now so the picker opens instantly later
             PROBES.warm.warm()
-            PROBES.prefetch(require_http_url(payload.get("url")), headers, cookies)
+            prefetch_url = require_http_url(payload.get("url"))
+            logger.info(f"Prefetching formats for {urlparse(prefetch_url).netloc}")
+            PROBES.prefetch(prefetch_url, headers, cookies)
             self._send_json(202, {"success": True})
             return
 
@@ -703,8 +716,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             format_id = MediaEngine.normalize_format(str(payload.get("format_id") or "720p"), extract_audio)
             out_dir = resolve_output_dir(payload.get("output_path"))
             referers = [r for r in (payload.get("referers") or []) if isinstance(r, str) and r.startswith(("http://", "https://"))][:4]
+            subtitle_urls = [u for u in (payload.get("subtitle_urls") or []) if isinstance(u, str) and u.startswith(("http://", "https://"))][:8]
             common = dict(format_id=format_id, extract_audio=extract_audio, audio_format=audio_format,
-                          headers=headers, cookies=cookies, referers=referers)
+                          headers=headers, cookies=cookies, referers=referers, subtitle_urls=subtitle_urls)
 
             entries = payload.get("entries")
             if entries is not None:
@@ -764,6 +778,16 @@ class RequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, settings_payload())
             return
 
+        if path == "/api/update/check":
+            from . import app_update
+            self._send_json(200, app_update.check(force=True))
+            return
+
+        if path == "/api/update/install":
+            from . import app_update
+            self._send_json(200, app_update.install(on_exit=lambda: None))
+            return
+
         if path == "/api/ytdlp/update":
             from . import updater, media
             try:
@@ -819,7 +843,13 @@ def create_server(port: int = 9229, host: str = "127.0.0.1") -> ThreadingHTTPSer
     os.makedirs(DEFAULT_DOWNLOAD_DIR, exist_ok=True)
     httpd = ThreadingHTTPServer((host, port), RequestHandler)
     httpd.daemon_threads = True
-    from . import updater, media, jsruntime
+    from . import updater, media, jsruntime, app_update
+    app_update.cleanup_leftovers()
+    try:
+        app_update.sync_extension()
+    except Exception as e:
+        logger.warning(f"Couldn't refresh the extension folder: {e}")
+    app_update.start_background()
     updater.start_background(is_idle=lambda: not STORE.media_stops, on_swap=media.reload_ytdlp)
     jsruntime.ensure_in_background()
     logger.info(f"Veloce Engine {__version__} listening at http://{host}:{port}/ — saving to {DEFAULT_DOWNLOAD_DIR}")
