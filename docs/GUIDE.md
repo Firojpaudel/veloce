@@ -20,34 +20,48 @@ Everything you need to install Veloce, use it day to day, and fix the rare thing
 
 The app is the engine that does the fast downloading. It runs quietly in your system tray.
 
-1. Download the file for your computer from the [latest release](https://github.com/Firojpaudel/veloce/releases/latest):
+### Download
 
-   | Your computer | File |
-   | :--- | :--- |
-   | Windows 10 or 11 | `veloce-setup-windows-x64.exe` (installer) — or `veloce-windows-x64-portable.zip` if you can't install apps |
-   | Mac with Apple chip (M1 or newer) | `veloce-macos-arm64` |
-   | Mac with Intel chip | `veloce-macos-x86_64` |
-   | Linux (64-bit) | `veloce-linux-x86_64` |
+Get the file for your computer from the [latest release](https://github.com/Firojpaudel/veloce/releases/latest):
 
-   > [!TIP]
-   > Not sure which Mac you have? Apple menu → **About This Mac**. "Chip: Apple M…" means Apple Silicon; "Processor: Intel" means Intel.
+| Your computer | File |
+| :--- | :--- |
+| Windows 10 or 11 | `veloce-setup-windows-x64.exe` (installer) — or `veloce-windows-x64-portable.zip` if you can't install apps |
+| Mac with Apple chip (M1 or newer) | `veloce-macos-arm64` |
+| Mac with Intel chip | `veloce-macos-x86_64` |
+| Linux (64-bit) | `veloce-linux-x86_64` |
 
-2. **Open it.**
-   - **Windows:** run the installer. It installs just for you (no admin password), adds Veloce to the Start menu, and offers **Start Veloce when I sign in** — leave it ticked. The portable zip runs from any folder: unzip it and open `Veloce.exe`.
-   - **macOS:** in Terminal, run `chmod +x ~/Downloads/veloce-macos-*` once, then double-click it (or run it from Terminal).
-   - **Linux:** `chmod +x veloce-linux-x86_64 && ./veloce-linux-x86_64`.
+> [!TIP]
+> Not sure which Mac you have? Apple menu → **About This Mac**. "Chip: Apple M…" means Apple Silicon; "Processor: Intel" means Intel.
 
-   > [!WARNING]
-   > The first launch may show a security prompt because Veloce isn't code-signed yet. It's about the missing signature, not about anything the app does.
-   > - **Windows, in the browser** ("isn't commonly downloaded" / "may be dangerous"): open the downloads list, then **⋯ → Keep** (Edge: **⋯ → Keep → Show more → Keep anyway**).
-   > - **Windows, when you run it** ("Windows protected your PC"): **More info → Run anyway**.
-   >
-   > You only see this once — for the installer. Everything after it, including updates to video support, happens inside the installed app.
-   > - **macOS** ("can't be opened because it is from an unidentified developer"): right-click the file → **Open** → **Open**. Or run `xattr -d com.apple.quarantine ~/Downloads/veloce-macos-*`.
+### Open it
 
-3. **The Veloce window opens in your browser** at `http://127.0.0.1:9229`, and a Veloce icon appears in your system tray (top bar on macOS, bottom-right on Windows).
+**Windows** — run the installer. It installs just for you (no admin password), adds Veloce to the Start menu, and offers **Start Veloce when I sign in**; leave it ticked. The portable zip runs from any folder: unzip it and open `Veloce.exe`.
 
-4. **Turn on _Start at login_** when the window offers it. From then on Veloce starts quietly every time you sign in, and you never have to open it again.
+**macOS** — the easiest way is one Terminal line. Files downloaded with `curl` aren't quarantined, so there's no security prompt:
+
+```bash
+curl -fL -o /usr/local/bin/veloce https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-arm64 && chmod +x /usr/local/bin/veloce && veloce
+```
+
+On an Intel Mac use `veloce-macos-x86_64`. If you're asked for a password, put `sudo` before `curl` and `chmod`.
+
+**Linux** — in the folder where you downloaded it:
+
+```bash
+chmod +x veloce-linux-x86_64 && ./veloce-linux-x86_64
+```
+
+> [!WARNING]
+> **The first launch may show a security prompt** because Veloce isn't code-signed yet. It's about the missing signature, not about anything the app does. You see it once, for the installer only.
+>
+> - **Windows, in the browser** ("isn't commonly downloaded" / "may be dangerous"): open the downloads list, then **⋯ → Keep** (Edge: **⋯ → Keep → Show more → Keep anyway**).
+> - **Windows, when you run it** ("Windows protected your PC"): **More info → Run anyway**.
+> - **macOS** ("can't be opened" / "Apple could not verify"): **System Settings → Privacy & Security**, scroll down, **Open Anyway**. The Terminal install above avoids this entirely.
+
+### Finish
+
+The Veloce window opens in your browser at `http://127.0.0.1:9229`, and a Veloce icon appears in your system tray (top bar on macOS, bottom-right on Windows). Turn on **Start at login** when the window offers it — from then on Veloce starts quietly every time you sign in, and you never have to open it again.
 
 > [!NOTE]
 > Opening Veloce a second time doesn't start a second copy — it just brings up the window. To close Veloce completely, use the tray icon → **Quit Veloce**.

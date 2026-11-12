@@ -82,7 +82,27 @@ Open it. Veloce settles into your system tray and opens its window.
 > [!WARNING]
 > **First launch may show a security prompt** because the app isn't code-signed yet — it's not about anything Veloce does.
 > - **Windows**: if your browser says the file "isn't commonly downloaded", choose **Keep**; then at “Windows protected your PC” click **More info → Run anyway**. This happens once, for the installer only.
-> - **macOS** (“can't be opened”): right-click the file → **Open**, or run `xattr -d com.apple.quarantine veloce-macos-*`.
+> - **macOS** (“can't be opened”): open **System Settings → Privacy & Security** and click **Open Anyway** — or skip the prompt entirely with the Terminal install below.
+
+<details>
+<summary><b>macOS & Linux: install from Terminal (no security prompt)</b></summary>
+<br/>
+
+Files downloaded with `curl` aren't quarantined, so macOS doesn't block them:
+
+```bash
+# macOS, Apple Silicon (M1 or newer)
+curl -fL -o /usr/local/bin/veloce https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-arm64 && chmod +x /usr/local/bin/veloce && veloce
+
+# macOS, Intel
+curl -fL -o /usr/local/bin/veloce https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-macos-x86_64 && chmod +x /usr/local/bin/veloce && veloce
+
+# Linux (x86-64)
+mkdir -p ~/.local/bin && curl -fL -o ~/.local/bin/veloce https://github.com/Firojpaudel/veloce/releases/latest/download/veloce-linux-x86_64 && chmod +x ~/.local/bin/veloce && ~/.local/bin/veloce
+```
+
+If `/usr/local/bin` needs a password on your Mac, put `sudo` before `curl` and `chmod`.
+</details>
 
 > [!TIP]
 > Accept **Start at login** when Veloce offers it on first launch. It then runs quietly in your tray (about 22 MB of memory) and you never have to open it again.

@@ -139,3 +139,23 @@ jobs:
         with:
           files: release_assets/*
           generate_release_notes: true
+
+  # Opens the winget update pull request for each new version (free; no code-signing needed).
+  # Turn on after the first version is accepted into microsoft/winget-pkgs:
+  #   1. fork https://github.com/microsoft/winget-pkgs to your account
+  #   2. create a classic token with the "public_repo" scope and save it as the WINGET_TOKEN secret
+  winget:
+    name: Submit to winget
+    needs: release
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Open winget pull request
+        if: env.WINGET_TOKEN != ''
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: Firojpaudel.Veloce
+          installers-regex: 'veloce-setup-windows-x64\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}

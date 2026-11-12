@@ -33,3 +33,7 @@ test_downloads/
 skills-lock.json
 .impeccable/
 .design-taste/
+
+# winget manifests are generated for submission, not kept here
+winget/
+homebrew/
